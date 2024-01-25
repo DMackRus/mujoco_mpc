@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "mjpc/test/ilqg_planner",
+		"source" : "mjpc/test/ilqg_planner"
+	}
+}

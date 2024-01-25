@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "_deps/spdlog_lib-build",
+		"source" : "cmake-build-debug/_deps/spdlog_lib-src"
+	}
+}

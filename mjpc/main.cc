@@ -47,6 +47,6 @@ int main(int argc, char** argv) {
 #endif
   absl::ParseCommandLine(argc, argv);
 
-  mjpc::StartApp(mjpc::GetTasks(), 13);  // start with quadruped flat
+  mjpc::StartApp(mjpc::GetTasks(), 16);  // start with walker model
   return 0;
 }

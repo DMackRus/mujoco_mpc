@@ -126,8 +126,9 @@ add_library(
   simulate.h
   task.cc
   task.h
-  $<TARGET_OBJECTS:mujoco::platform_ui_adapter>
-)
+  planners/keypointgenerator.cc
+  planners/keypointgenerator.h
+  $<TARGET_OBJECTS:mujoco::platform_ui_adapter>)
 set_target_properties(libmjpc PROPERTIES OUTPUT_NAME mjpc)
 target_compile_options(libmjpc PUBLIC ${MJPC_COMPILE_OPTIONS})
 target_compile_definitions(libmjpc PRIVATE MJSIMULATE_STATIC)

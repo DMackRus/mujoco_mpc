@@ -1,0 +1,137 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"cmake-build-debug/_deps/mujoco-src/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 191,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 204,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 224,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 230,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "runtime",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"lib/libmujoco.so.3.0.1"
+			],
+			"targetId" : "mujoco::@5096ace5b6b331c30bf2",
+			"targetIndex" : 150,
+			"targetInstallNamelink" : "skip",
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "runtime",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"lib/libmujoco.so"
+			],
+			"targetId" : "mujoco::@5096ace5b6b331c30bf2",
+			"targetIndex" : 150,
+			"targetInstallNamelink" : "only",
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "dev",
+			"destination" : "include/mujoco",
+			"paths" : 
+			[
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjdata.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjexport.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjmacro.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjmodel.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjplugin.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjrender.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjthread.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjtnum.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjui.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjvisualize.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mjxmacro.h",
+				"cmake-build-debug/_deps/mujoco-src/include/mujoco/mujoco.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/mujoco",
+			"exportName" : "mujoco",
+			"exportTargets" : 
+			[
+				{
+					"id" : "mujoco::@5096ace5b6b331c30bf2",
+					"index" : 150
+				}
+			],
+			"paths" : 
+			[
+				"_deps/mujoco-build/CMakeFiles/Export/0b3b73e44e0b7c8937151edebfc316a5/mujocoTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "Unspecified",
+			"destination" : "lib/cmake/mujoco",
+			"paths" : 
+			[
+				"cmake-build-debug/_deps/mujoco-build/mujocoConfig.cmake",
+				"cmake-build-debug/_deps/mujoco-build/mujocoConfigVersion.cmake"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "Unspecified",
+			"destination" : "share/mujoco",
+			"paths" : 
+			[
+				"cmake-build-debug/_deps/mujoco-src/model"
+			],
+			"type" : "directory"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "_deps/mujoco-build",
+		"source" : "cmake-build-debug/_deps/mujoco-src"
+	}
+}

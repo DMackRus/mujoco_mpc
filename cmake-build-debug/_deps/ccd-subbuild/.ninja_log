@@ -1,0 +1,19 @@
+# ninja log v5
+716	718	1706178289009538645	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-test	2434e55ade7221bb
+711	713	1706178289001538713	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-configure	c2728a5cf7f2da38
+714	716	1706178289005538679	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-install	6f19803db6f7378b
+709	711	1706178289001538713	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-patch	c948b485bd28ccc9
+718	720	1706178289009538645	CMakeFiles/ccd-populate-complete	bc27bc297c9e2ff7
+718	720	1706178289009538645	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-done	bc27bc297c9e2ff7
+709	711	1706178289001538713	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-patch	c948b485bd28ccc9
+0	2	1706178288293544697	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-mkdir	c902639ea58b86ec
+0	2	1706178288293544697	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-mkdir	c902639ea58b86ec
+711	713	1706178289001538713	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-configure	c2728a5cf7f2da38
+718	720	1706178289009538645	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/CMakeFiles/ccd-populate-complete	bc27bc297c9e2ff7
+716	718	1706178289009538645	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-test	2434e55ade7221bb
+2	709	1706178289001538713	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-download	e93398046725b18f
+713	714	1706178289005538679	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-build	12c7b74d0488c646
+2	709	1706178289001538713	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-download	e93398046725b18f
+718	720	1706178289009538645	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-done	bc27bc297c9e2ff7
+714	716	1706178289005538679	/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/ccd-subbuild/ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-install	6f19803db6f7378b
+713	714	1706178289005538679	ccd-populate-prefix/src/ccd-populate-stamp/ccd-populate-build	12c7b74d0488c646
