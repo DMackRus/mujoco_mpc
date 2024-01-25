@@ -35,9 +35,48 @@
 #define MJPC_PLANNERS_KEYPOINTGENERATOR_H
 
 #include <mujoco/mujoco.h>
+#include <vector>
+#include <chrono>
+#include <string>
+#include <iostream>
+
+struct keypoint_method{
+    std::string name;
+    int min_N;
+    int max_N;
+    std::vector<double> jerk_thresholds;
+    std::vector<double> accell_thresholds;
+    std::vector<double> velocity_change_thresholds;
+};
 
 class KeyPointGenerator{
-    
+public:
+    // Constructor
+    KeyPointGenerator() = default;
+
+    // Destructor
+    ~KeyPointGenerator() = default;
+
+    /**
+     * Generates a set of key-points per degree of freedom over a trajectory depending on the
+     * key-point method specified. Usually takes into account the trajectory_states of the system.
+     *
+     * @param  keypoint_method The method and parameters used to generate key-points.
+     * @param  T Optimisation horizon.
+     * @param  x A sequence of state vectors over the trajectory.
+     * @param  u A sequence of control vectors over the trajectory.
+     *
+     * @return std::vector<std::vector<int>> A set of key-points (integer indices over the trajectory) per
+     * degree of freedom.
+     */
+    std::vector<std::vector<int>> GenerateKeyPoints(keypoint_method keypoint_method,
+                                                    int T, const double* x, int dim_state);
+
+private:
+
+    double* GenerateJerkProfile(int T, const double* x, int dim_state);
+
+
 };
 
 

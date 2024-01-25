@@ -25,6 +25,7 @@
 #include "mjpc/planners/planner.h"
 #include "mjpc/states/state.h"
 #include "mjpc/trajectory.h"
+#include "mjpc/planners/keypointgenerator.h"
 
 namespace mjpc {
 
@@ -132,6 +133,9 @@ class iLQGPlanner : public Planner {
 
   // settings
   iLQGSettings settings;
+
+  // Keypoint generator
+  KeyPointGenerator key_point_generator;
 
   // values
   double action_step;

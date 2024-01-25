@@ -384,13 +384,38 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   // start timer
   auto model_derivative_start = std::chrono::steady_clock::now();
 
+  // TODO - make this a variable from GUI
   // compute model and sensor Jacobians
-  model_derivative.Compute(
-      model, data_, candidate_policy[0].trajectory.states.data(),
-      candidate_policy[0].trajectory.actions.data(),
-      candidate_policy[0].trajectory.times.data(), dim_state,
-      dim_state_derivative, dim_action, dim_sensor, horizon,
-      settings.fd_tolerance, settings.fd_mode, pool);
+  if(1){
+      // Define a keypoint method, hardcoded for now.
+      keypoint_method active_method;
+      active_method.name = "Set_Interval";
+      active_method.min_N = 2;
+
+      // Generate keypoints
+      std::vector<std::vector<int>> keypoints = key_point_generator.GenerateKeyPoints(active_method,
+                                                                                      horizon,
+                                                                                      candidate_policy[0].trajectory.states.data(),
+                                                                                      dim_state);
+
+      model_derivative.Compute_keypoints(
+              model, data_, candidate_policy[0].trajectory.states.data(),
+              candidate_policy[0].trajectory.actions.data(),
+              candidate_policy[0].trajectory.times.data(), dim_state,
+              dim_state_derivative, dim_action, dim_sensor, horizon,
+              settings.fd_tolerance, settings.fd_mode, pool, keypoints);
+  }
+  else{
+      model_derivative.Compute(
+              model, data_, candidate_policy[0].trajectory.states.data(),
+              candidate_policy[0].trajectory.actions.data(),
+              candidate_policy[0].trajectory.times.data(), dim_state,
+              dim_state_derivative, dim_action, dim_sensor, horizon,
+              settings.fd_tolerance, settings.fd_mode, pool);
+  }
+
+
+
 
   // stop timer
   double model_derivative_time = GetDuration(model_derivative_start);

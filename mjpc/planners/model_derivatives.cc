@@ -17,8 +17,6 @@
 #include <algorithm>
 
 #include <mujoco/mujoco.h>
-#include "mjpc/threadpool.h"
-#include "mjpc/utilities.h"
 
 namespace mjpc {
 
@@ -84,5 +82,52 @@ void ModelDerivatives::Compute(const mjModel* m,
   }
   pool.ResetCount();
 }
+
+void ModelDerivatives::Compute_keypoints(const mjModel* m, const std::vector<UniqueMjData>& data,
+                       const double* x, const double* u, const double* h, int dim_state,
+                       int dim_state_derivative, int dim_action, int dim_sensor, int T,
+                       double tol, int mode, ThreadPool& pool, std::vector<std::vector<int>> keypoints){
+    {
+        int count_before = pool.GetCount();
+        for (int t = 0; t < T; t++) {
+
+            // If no keypoints for this dof, skip computation
+            if(keypoints.size() == 0){
+                continue;
+            }
+            pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
+                                  dim_state, dim_state_derivative, dim_action, dim_sensor,
+                                  tol, mode, t, T]() {
+                mjData* d = data[ThreadPool::WorkerId()].get();
+                // set state
+                SetState(m, d, x + t * dim_state);
+                d->time = h[t];
+
+                // set action
+                mju_copy(d->ctrl, u + t * dim_action, dim_action);
+
+                // Jacobians
+                if (t == T - 1) {
+                    // Jacobians
+                    mjd_transitionFD(m, d, tol, mode, nullptr, nullptr,
+                                     DataAt(C, t * (dim_sensor * dim_state_derivative)),
+                                     nullptr);
+                } else {
+                    // derivatives
+                    mjd_transitionFD(
+                            m, d, tol, mode,
+                            DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
+                            DataAt(B, t * (dim_state_derivative * dim_action)),
+                            DataAt(C, t * (dim_sensor * dim_state_derivative)),
+                            DataAt(D, t * (dim_sensor * dim_action)));
+                }
+            });
+        }
+        pool.WaitCount(count_before + T);
+    }
+    pool.ResetCount();
+
+}
+
 
 }  // namespace mjpc
