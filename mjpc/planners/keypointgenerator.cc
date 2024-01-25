@@ -91,15 +91,104 @@ std::vector<std::vector<int>> KeyPointGenerator::GenerateKeyPoints(keypoint_meth
     }
 
 //     Print out the key points
-    for(int i = 0; i < keypoints.size(); i++){
-        std::cout << "timestep " << i << ": ";
-        for(int j = 0; j < keypoints[i].size(); j++){
-            std::cout << keypoints[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
+//    for(int i = 0; i < keypoints.size(); i++){
+//        std::cout << "timestep " << i << ": ";
+//        for(int j = 0; j < keypoints[i].size(); j++){
+//            std::cout << keypoints[i][j] << " ";
+//        }
+//        std::cout << "\n";
+//    }
 
     return keypoints;
+}
+
+void InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
+                            std::vector<double> &A,
+                            std::vector<double> &B,
+                            std::vector<double> &C,
+                            std::vector<double> &D,
+                            int dim_state, int dim_action, int T){
+
+    //TODO - DMackRus, this could be wrong in situations when qvel != qpos
+    int num_dof = dim_state / 2;
+
+    // Create an array to track start_indices of current interpolation per dof
+    int *start_indices = new int[num_dof];
+    for(int i = 0; i < num_dof; i++){
+        start_indices[i] = 0;
+    }
+
+    // Loop through all the time indices - can skip the first
+    // index as we preload the first index as the start index for all dofs.
+    for(int t = 1; t < T; t++){
+        // Loop through all the dofs
+        for(int dof = 0; dof < num_dof; dof++){
+            // Check if this time index contains any key-points for any dof.
+            std::vector<int> columns = keypoints[t];
+
+            // If there are no keypoints, continue onto next run of the loop
+            if(columns.size() == 0){
+                continue;
+            }
+
+            for(int j = 0; j < columns.size(); j++){
+
+                // If there is a match, interpolate between the start index and the current index
+                // For the given columns
+                if(dof == columns[j]){
+
+                    // Loop from start index to current index
+
+                    // A, B, C, D matrices are column
+
+                    // Starting index of top left of A matrix for last keypoint.
+                    int A_index_time = (start_indices[dof] * dim_state * dim_state);
+
+                    // Starting index of top left of B matrix for last keypoint.
+                    int B_index_time = (start_indices[dof] * dim_state * dim_action);
+
+
+                    int start_val_pos = A[A_index_time + (dof * dim_state)];
+                    int start_val_vel = A[A_index_time + (dim_state * (dim_state / 2)) + (dof * dim_state)];
+                    int start_val_ctrl = B[B_index_time + (dof * dim_action)];
+
+                    // Loop through from previous keypoint to now, interpolating all values
+                    // in the columns for that dof.
+                    for(int k = start_indices[dof]; k < t; k++){
+
+                    }
+
+
+//                    cout << "dof: " << i << " end index: " << t << " start index: " << startIndices[i] << "\n";
+//                    MatrixXd startACol1 = A[startIndices[i]].block(dof, i, dof, 1);
+//                    MatrixXd endACol1 = A[t].block(dof, i, dof, 1);
+//                    MatrixXd addACol1 = (endACol1 - startACol1) / (t - startIndices[i]);
+//
+//                    // Same again for column 2 which is dof + i
+//                    MatrixXd startACol2 = A[startIndices[i]].block(dof, i + dof, dof, 1);
+//                    MatrixXd endACol2 = A[t].block(dof, i + dof, dof, 1);
+//                    MatrixXd addACol2 = (endACol2 - startACol2) / (t - startIndices[i]);
+//
+//                    if(i < num_ctrl){
+//                        startB = B[startIndices[i]].block(dof, i, dof, 1);
+//                        endB = B[t].block(dof, i, dof, 1);
+//                        addB = (endB - startB) / (t - startIndices[i]);
+//                    }
+//
+//                    for(int k = startIndices[i]; k < t; k++){
+//                        A[k].block(dof, i, dof, 1) = startACol1 + ((k - startIndices[i]) * addACol1);
+//
+//                        A[k].block(dof, i + dof, dof, 1) = startACol2 + ((k - startIndices[i]) * addACol2);
+//
+//                        if(i < num_ctrl){
+//                            B[k].block(dof, i, dof, 1) = startB + ((k - startIndices[i]) * addB);
+//                        }
+//                    }
+                    start_indices[dof] = t;
+                }
+            }
+        }
+    }
 }
 
 double* GenerateJerkProfile(int T, const double* x, int dim_state){

@@ -72,6 +72,13 @@ public:
     std::vector<std::vector<int>> GenerateKeyPoints(keypoint_method keypoint_method,
                                                     int T, const double* x, int dim_state);
 
+    void InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
+                                std::vector<double> &A,
+                                std::vector<double> &B,
+                                std::vector<double> &C,
+                                std::vector<double> &D,
+                                int dim_state, int dim_action, int T);
+
 private:
 
     double* GenerateJerkProfile(int T, const double* x, int dim_state);

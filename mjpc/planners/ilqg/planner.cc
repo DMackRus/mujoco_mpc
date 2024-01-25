@@ -386,7 +386,7 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
   // TODO - make this a variable from GUI
   // compute model and sensor Jacobians
-  if(1){
+  if(0){
       // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
       active_method.name = "Set_Interval";
@@ -397,6 +397,13 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
                                                                                       horizon,
                                                                                       candidate_policy[0].trajectory.states.data(),
                                                                                       dim_state);
+
+      std::cout << "dim state: " << dim_state << "\n";
+      std::cout << "dim state deriv: " << dim_state_derivative << "\n";
+      std::cout << "dim action: " << dim_action << "\n";
+      std::cout << "dim sensor: " << dim_sensor << "\n";
+
+      std::cout << "na: " << model->na << "\n";
 
       model_derivative.Compute_keypoints(
               model, data_, candidate_policy[0].trajectory.states.data(),
@@ -413,6 +420,8 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
               dim_state_derivative, dim_action, dim_sensor, horizon,
               settings.fd_tolerance, settings.fd_mode, pool);
   }
+
+//  std::cout << "Size of A: " << model_derivative.A.size() << "\n";
 
 
 
