@@ -34,7 +34,11 @@
 #ifndef MJPC_PLANNERS_KEYPOINTGENERATOR_H
 #define MJPC_PLANNERS_KEYPOINTGENERATOR_H
 
+#include <mujoco/mujoco.h>
 
+class KeyPointGenerator{
+    
+};
 
 
 
