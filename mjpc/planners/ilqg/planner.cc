@@ -243,6 +243,7 @@ void iLQGPlanner::GUI(mjUI& ui) {
       // {mjITEM_RADIO, "Action Lmt.", 2, &settings.action_limits, "Off\nOn"},
       {mjITEM_SELECT, "Policy Interp.", 2, &policy.representation,
        "Zero\nLinear\nCubic"},
+      {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
       {mjITEM_SELECT, "Reg. Type", 2, &settings.regularization_type,
        "Control\nFeedback\nValue\nNone"},
       {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
@@ -386,7 +387,7 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
   // TODO - make this a variable from GUI
   // compute model and sensor Jacobians
-  if(0){
+  if(1){
       // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
       active_method.name = "Set_Interval";
@@ -398,19 +399,20 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
                                                                                       candidate_policy[0].trajectory.states.data(),
                                                                                       dim_state);
 
-      std::cout << "dim state: " << dim_state << "\n";
-      std::cout << "dim state deriv: " << dim_state_derivative << "\n";
-      std::cout << "dim action: " << dim_action << "\n";
-      std::cout << "dim sensor: " << dim_sensor << "\n";
-
-      std::cout << "na: " << model->na << "\n";
+//      std::cout << "dim state: " << dim_state << "\n";
+//      std::cout << "dim state deriv: " << dim_state_derivative << "\n";
+//      std::cout << "dim action: " << dim_action << "\n";
+//      std::cout << "dim sensor: " << dim_sensor << "\n";
+//
+//      std::cout << "na: " << model->na << "\n";
+      std::cout << "deric skip: " << derivative_skip_ << "\n";
 
       model_derivative.Compute_keypoints(
               model, data_, candidate_policy[0].trajectory.states.data(),
               candidate_policy[0].trajectory.actions.data(),
               candidate_policy[0].trajectory.times.data(), dim_state,
               dim_state_derivative, dim_action, dim_sensor, horizon,
-              settings.fd_tolerance, settings.fd_mode, pool, keypoints);
+              settings.fd_tolerance, settings.fd_mode, pool, derivative_skip_);
   }
   else{
       model_derivative.Compute(

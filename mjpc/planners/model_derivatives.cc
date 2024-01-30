@@ -86,19 +86,37 @@ void ModelDerivatives::Compute(const mjModel* m,
 void ModelDerivatives::Compute_keypoints(const mjModel* m, const std::vector<UniqueMjData>& data,
                        const double* x, const double* u, const double* h, int dim_state,
                        int dim_state_derivative, int dim_action, int dim_sensor, int T,
-                       double tol, int mode, ThreadPool& pool, std::vector<std::vector<int>> keypoints){
+                       double tol, int mode, ThreadPool& pool, int skip){
     {
-        int count_before = pool.GetCount();
+        evaluate_.clear();
+        interpolate_.clear();
+
+        int s = skip + 1;
+        evaluate_.push_back(0);
+        for (int t = s; t < T - s; t += s) {
+            evaluate_.push_back(t);
+        }
+        evaluate_.push_back(T - 2);
+        evaluate_.push_back(T - 1);
+
+        // interpolate indices
         for (int t = 0; t < T; t++) {
+            if (std::find(evaluate_.begin(), evaluate_.end(), t) == evaluate_.end()) {
+                interpolate_.push_back(t);
+            }
+        }
+
+        int count_before = pool.GetCount();
+        for (int t : evaluate_) {
 
             // If no keypoints for this dof, skip computation
-            if(keypoints.size() == 0){
-                continue;
-            }
+//            if(keypoints.size() == 0){
+//                continue;
+//            }
             pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
                                   dim_state, dim_state_derivative, dim_action, dim_sensor,
                                   tol, mode, t, T]() {
-                mjData* d = data[ThreadPool::WorkerId()].get();
+                mjData *d = data[ThreadPool::WorkerId()].get();
                 // set state
                 SetState(m, d, x + t * dim_state);
                 d->time = h[t];
@@ -123,10 +141,68 @@ void ModelDerivatives::Compute_keypoints(const mjModel* m, const std::vector<Uni
                 }
             });
         }
-        pool.WaitCount(count_before + T);
-    }
-    pool.ResetCount();
 
+        pool.WaitCount(count_before + evaluate_.size());
+        pool.ResetCount();
+
+        // interpolate derivatives
+        count_before = pool.GetCount();
+        for (int t: interpolate_) {
+            pool.Schedule([&A = A, &B = B, &C = C, &D = D, &evaluate_ = this->evaluate_,
+                                  dim_state_derivative, dim_action, dim_sensor, t]() {
+                // find interval
+                int bounds[2];
+                FindInterval(bounds, evaluate_, t, evaluate_.size());
+                int e0 = evaluate_[bounds[0]];
+                int e1 = evaluate_[bounds[1]];
+
+                // normalized input
+                double tt = double(t - e0) / double(e1 - e0);
+                if (bounds[0] == bounds[1]) {
+                    tt = 0.0;
+                }
+
+                // A
+                int nA = dim_state_derivative * dim_state_derivative;
+                double *Ai = DataAt(A, t * nA);
+                double *AL = DataAt(A, e0 * nA);
+                double *AU = DataAt(A, e1 * nA);
+
+                mju_scl(Ai, AL, 1.0 - tt, nA);
+                mju_addToScl(Ai, AU, tt, nA);
+
+                // B
+                int nB = dim_state_derivative * dim_action;
+                double *Bi = DataAt(B, t * nB);
+                double *BL = DataAt(B, e0 * nB);
+                double *BU = DataAt(B, e1 * nB);
+
+                mju_scl(Bi, BL, 1.0 - tt, nB);
+                mju_addToScl(Bi, BU, tt, nB);
+
+                // C
+                int nC = dim_sensor * dim_state_derivative;
+                double *Ci = DataAt(C, t * nC);
+                double *CL = DataAt(C, e0 * nC);
+                double *CU = DataAt(C, e1 * nC);
+
+                mju_scl(Ci, CL, 1.0 - tt, nC);
+                mju_addToScl(Ci, CU, tt, nC);
+
+                // D
+                int nD = dim_sensor * dim_action;
+                double *Di = DataAt(D, t * nD);
+                double *DL = DataAt(D, e0 * nD);
+                double *DU = DataAt(D, e1 * nD);
+
+                mju_scl(Di, DL, 1.0 - tt, nD);
+                mju_addToScl(Di, DU, tt, nD);
+            });
+        }
+
+        pool.WaitCount(count_before + interpolate_.size());
+        pool.ResetCount();
+    }
 }
 
 

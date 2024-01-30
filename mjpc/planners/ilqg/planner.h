@@ -137,6 +137,8 @@ class iLQGPlanner : public Planner {
   // Keypoint generator
   KeyPointGenerator key_point_generator;
 
+  int derivative_skip_ = 0;
+
   // values
   double action_step;
   double feedback_scaling;

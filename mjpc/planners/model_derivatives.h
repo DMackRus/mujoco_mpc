@@ -51,7 +51,7 @@ class ModelDerivatives {
   void Compute_keypoints(const mjModel* m, const std::vector<UniqueMjData>& data,
                  const double* x, const double* u, const double* h, int dim_state,
                  int dim_state_derivative, int dim_action, int dim_sensor, int T,
-                 double tol, int mode, ThreadPool& pool, std::vector<std::vector<int>> keypoints);
+                 double tol, int mode, ThreadPool& pool, int skip);
 
   // Jacobians
   std::vector<double> A;  // model Jacobians wrt state
@@ -62,6 +62,12 @@ class ModelDerivatives {
                           //   (T * dim_sensor * dim_state_derivative)
   std::vector<double> D;  // output Jacobians wrt action
                           //   (T * dim_sensor * dim_action)
+
+
+  // Keypoint indices
+  std::vector<int> evaluate_;
+  std::vector<int> interpolate_;
+
 };
 
 }  // namespace mjpc

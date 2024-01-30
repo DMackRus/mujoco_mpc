@@ -137,20 +137,19 @@ void InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
                 // For the given columns
                 if(dof == columns[j]){
 
-                    // Loop from start index to current index
 
                     // A, B, C, D matrices are column
 
                     // Starting index of top left of A matrix for last keypoint.
-                    int A_index_time = (start_indices[dof] * dim_state * dim_state);
+//                    int A_index_time = (start_indices[dof] * dim_state * dim_state);
 
                     // Starting index of top left of B matrix for last keypoint.
-                    int B_index_time = (start_indices[dof] * dim_state * dim_action);
+//                    int B_index_time = (start_indices[dof] * dim_state * dim_action);
 
 
-                    int start_val_pos = A[A_index_time + (dof * dim_state)];
-                    int start_val_vel = A[A_index_time + (dim_state * (dim_state / 2)) + (dof * dim_state)];
-                    int start_val_ctrl = B[B_index_time + (dof * dim_action)];
+//                    int start_val_pos = A[A_index_time + (dof * dim_state)];
+//                    int start_val_vel = A[A_index_time + (dim_state * (dim_state / 2)) + (dof * dim_state)];
+//                    int start_val_ctrl = B[B_index_time + (dof * dim_action)];
 
                     // Loop through from previous keypoint to now, interpolating all values
                     // in the columns for that dof.
