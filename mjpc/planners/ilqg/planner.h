@@ -134,10 +134,13 @@ class iLQGPlanner : public Planner {
   // settings
   iLQGSettings settings;
 
-  // Keypoint generator
+  // Keypoint object
   KeyPointGenerator key_point_generator;
 
-  int derivative_skip_ = 0;
+  // Keypoint variables to store GUI values
+  int min_n = 1;
+  int max_n = 1;
+  std::vector<double> jerk_thresholds;
 
   // values
   double action_step;

@@ -71,6 +71,9 @@ void iLQGPlanner::Allocate() {
   mocap.resize(7 * model->nmocap);
   userdata.resize(model->nuserdata);
 
+  // Keypoint objects
+  jerk_thresholds.resize(model->nv);
+
   // candidate trajectories
   for (int i = 0; i < kMaxTrajectory; i++) {
     trajectory[i].Initialize(dim_state, dim_action, task->num_residual,
@@ -243,7 +246,6 @@ void iLQGPlanner::GUI(mjUI& ui) {
       // {mjITEM_RADIO, "Action Lmt.", 2, &settings.action_limits, "Off\nOn"},
       {mjITEM_SELECT, "Policy Interp.", 2, &policy.representation,
        "Zero\nLinear\nCubic"},
-      {mjITEM_SLIDERINT, "Deriv. Skip", 2, &derivative_skip_, "0 16"},
       {mjITEM_SELECT, "Reg. Type", 2, &settings.regularization_type,
        "Control\nFeedback\nValue\nNone"},
       {mjITEM_CHECKINT, "Terminal Print", 2, &settings.verbose, ""},
@@ -254,6 +256,51 @@ void iLQGPlanner::GUI(mjUI& ui) {
 
   // add iLQG planner
   mjui_add(&ui, defiLQG);
+
+  // TODO(DMackRus) - better choice for this, max degrees of freedom??
+  mjuiDef defKeypoints[kMaxCostTerms + 4];
+
+  defKeypoints[0] = {mjITEM_SEPARATOR, "Keypoints", 1};
+  defKeypoints[1] = {mjITEM_SLIDERINT, "min. interval", 2, &min_n, "1 16"};
+  defKeypoints[2] = {mjITEM_SLIDERINT, "max. interval", 2, &max_n, "1 16"};
+
+  for(int i = 0; i < 9; i++){
+      defKeypoints[3 + i] = {mjITEM_SLIDERNUM, "Jerk threshold",
+                             1, DataAt(jerk_thresholds, i), "-1 1"};
+
+//      defKeypoints[3 + i]
+        // jerk threshold: {body name}
+//     char name[15] = "jerk_threshold";
+//        const char* name = "jerk";
+
+    const char* prefix = "Jerk: ";
+//    strncpy(name, model->names + model->name_bodyadr[i], 15);
+
+      int len1 = strlen(prefix);
+      int len2 = strlen(model->names + model->name_jntadr[i]);
+
+      char* result = new char[len1 + len2 + 1];
+
+      // Copy the first string into the result buffer
+      strcpy(result, prefix);
+
+      // Concatenate the second string to the result buffer
+      strcat(result, model->names + model->name_jntadr[i]);
+
+      mju::strcpy_arr(defKeypoints[3 + i].name,
+                      result);
+
+
+
+//      model->name
+
+
+  }
+
+  defKeypoints[model->nv + 4] = {mjITEM_END};
+
+  mjui_add(&ui, defKeypoints);
+
 }
 
 // planner-specific plots
@@ -369,6 +416,7 @@ void iLQGPlanner::Plots(mjvFigure* fig_planner, mjvFigure* fig_timer,
 
 // single iLQG iteration
 void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
+    auto iter_start = std::chrono::steady_clock::now();
   // set previous best cost
   double previous_return = candidate_policy[0].trajectory.total_return;
 
@@ -391,7 +439,8 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
       // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
       active_method.name = "Set_Interval";
-      active_method.min_N = 2;
+      active_method.min_N = min_n;
+      active_method.max_N = max_n;
 
       // Generate keypoints
       std::vector<std::vector<int>> keypoints = key_point_generator.GenerateKeyPoints(active_method,
@@ -399,20 +448,15 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
                                                                                       candidate_policy[0].trajectory.states.data(),
                                                                                       dim_state);
 
-//      std::cout << "dim state: " << dim_state << "\n";
-//      std::cout << "dim state deriv: " << dim_state_derivative << "\n";
-//      std::cout << "dim action: " << dim_action << "\n";
-//      std::cout << "dim sensor: " << dim_sensor << "\n";
-//
-//      std::cout << "na: " << model->na << "\n";
-      std::cout << "deric skip: " << derivative_skip_ << "\n";
-
-      model_derivative.Compute_keypoints(
+      model_derivative.ComputeKeypoints(
               model, data_, candidate_policy[0].trajectory.states.data(),
               candidate_policy[0].trajectory.actions.data(),
               candidate_policy[0].trajectory.times.data(), dim_state,
               dim_state_derivative, dim_action, dim_sensor, horizon,
-              settings.fd_tolerance, settings.fd_mode, pool, derivative_skip_);
+              settings.fd_tolerance, settings.fd_mode, pool, keypoints);
+
+      // Interpolate derivatives
+
   }
   else{
       model_derivative.Compute(
@@ -634,6 +678,15 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
   // stop timer
   double policy_update_time = GetDuration(policy_update_start);
+
+    double iter_time = GetDuration(iter_start);
+    std::cout << "time iter: " << iter_time << "\n";
+
+    std::cout << "time model derivs: " << model_derivative_time << "\n";
+    std::cout << "time cost derivs: " << cost_derivative_time << "\n";
+    std::cout << "time rollouts: " << rollouts_time << "\n";
+    std::cout << "time backward pass: " << backward_pass_time << "\n";
+    std::cout << "time policy update: " << policy_update_time << "\n";
 
   // set timers
   model_derivative_compute_time = model_derivative_time;
