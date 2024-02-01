@@ -138,6 +138,7 @@ class iLQGPlanner : public Planner {
   KeyPointGenerator key_point_generator;
 
   // Keypoint variables to store GUI values
+  int active_keypoint_method = 0;
   int min_n = 1;
   int max_n = 1;
   std::vector<double> jerk_thresholds;

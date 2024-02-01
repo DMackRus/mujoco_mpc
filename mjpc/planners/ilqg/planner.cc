@@ -258,46 +258,41 @@ void iLQGPlanner::GUI(mjUI& ui) {
   mjui_add(&ui, defiLQG);
 
   // TODO(DMackRus) - better choice for this, max degrees of freedom??
-  mjuiDef defKeypoints[kMaxCostTerms + 4];
+  mjuiDef defKeypoints[kMaxCostTerms + 5];
 
   defKeypoints[0] = {mjITEM_SEPARATOR, "Keypoints", 1};
-  defKeypoints[1] = {mjITEM_SLIDERINT, "min. interval", 2, &min_n, "1 16"};
-  defKeypoints[2] = {mjITEM_SLIDERINT, "max. interval", 2, &max_n, "1 16"};
+  defKeypoints[1] = {mjITEM_SELECT, "Keypoint method", 2, &active_keypoint_method,
+                    "Set Interval\nAdaptive Jerk\nVelocity Change"},
+  defKeypoints[2] = {mjITEM_SLIDERINT, "min. interval", 2, &min_n, "1 16"};
+  defKeypoints[3] = {mjITEM_SLIDERINT, "max. interval", 2, &max_n, "1 16"};
 
-  for(int i = 0; i < 9; i++){
-      defKeypoints[3 + i] = {mjITEM_SLIDERNUM, "Jerk threshold",
-                             1, DataAt(jerk_thresholds, i), "-1 1"};
+  for(int i = 0; i < model->nv; i++){
+    defKeypoints[4 + i] = {mjITEM_SLIDERNUM, "Jerk threshold",
+                         1, DataAt(jerk_thresholds, i), "0 1"};
 
-//      defKeypoints[3 + i]
-        // jerk threshold: {body name}
-//     char name[15] = "jerk_threshold";
-//        const char* name = "jerk";
-
+    // Set names of sliders for jerk thresholds
     const char* prefix = "Jerk: ";
-//    strncpy(name, model->names + model->name_bodyadr[i], 15);
+    int len1 = strlen(prefix);
+    int len2 = strlen(model->names + model->name_jntadr[i]);
 
-      int len1 = strlen(prefix);
-      int len2 = strlen(model->names + model->name_jntadr[i]);
+    char* result = new char[len1 + len2 + 1];
 
-      char* result = new char[len1 + len2 + 1];
+    // Copy the first string into the result buffer
+    strcpy(result, prefix);
 
-      // Copy the first string into the result buffer
-      strcpy(result, prefix);
+    // Concatenate the second string to the result buffer
+    strcat(result, model->names + model->name_jntadr[i]);
 
-      // Concatenate the second string to the result buffer
-      strcat(result, model->names + model->name_jntadr[i]);
-
-      mju::strcpy_arr(defKeypoints[3 + i].name,
+    mju::strcpy_arr(defKeypoints[4 + i].name,
                       result);
 
-
-
-//      model->name
-
+    // limits
+//    double* s = model_->sensor_user + i * model_->nuser_sensor;
+//    mju::sprintf_arr(defNormWeight[i].other, "%f %f", s[2], s[3]);
 
   }
 
-  defKeypoints[model->nv + 4] = {mjITEM_END};
+  defKeypoints[5 + model->nv] = {mjITEM_END};
 
   mjui_add(&ui, defKeypoints);
 
@@ -438,9 +433,24 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   if(1){
       // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
-      active_method.name = "Set_Interval";
+
       active_method.min_N = min_n;
       active_method.max_N = max_n;
+
+      if(active_keypoint_method == SET_INTERVAL){
+          active_method.name = "set_interval";
+      }
+      else if(active_keypoint_method == ADAPTIVE_JERK){
+          active_method.name = "adaptive_jerk";
+      }
+      else if(active_keypoint_method == VELOCITY_CHANGE){
+          active_method.name = "velocity_change";
+      }
+      else{
+          std::cout << "Invalid keypoint method selected. Defaulting to baseline\n";
+          active_method.name = "set_interval";
+          active_method.min_N = 1;
+      }
 
       // Generate keypoints
       std::vector<std::vector<int>> keypoints = key_point_generator.GenerateKeyPoints(active_method,

@@ -40,6 +40,12 @@
 #include <string>
 #include <iostream>
 
+enum keypoint_method_names{
+    SET_INTERVAL = 0,
+    ADAPTIVE_JERK = 1,
+    VELOCITY_CHANGE = 2
+};
+
 struct keypoint_method{
     std::string name;
     int min_N;
