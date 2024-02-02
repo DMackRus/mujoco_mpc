@@ -1,3 +1,0 @@
-/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/marchingcubecpp-subbuild/CMakeFiles/marchingcubecpp-populate.dir
-/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/marchingcubecpp-subbuild/CMakeFiles/edit_cache.dir
-/home/davidrussell/mujoco_mpc/cmake-build-debug/_deps/marchingcubecpp-subbuild/CMakeFiles/rebuild_cache.dir

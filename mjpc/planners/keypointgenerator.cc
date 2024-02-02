@@ -49,7 +49,7 @@ std::vector<std::vector<int>> KeyPointGenerator::GenerateKeyPoints(keypoint_meth
         return keypoints;
     }
 
-    if(keypoint_method.name == "Set_Interval"){
+    if(keypoint_method.name == "set_interval"){
         for(int i = 1; i < T; i++){
 
             if(i % keypoint_method.min_N == 0){

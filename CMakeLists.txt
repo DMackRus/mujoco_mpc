@@ -56,7 +56,8 @@ set(MUJOCO_BUILD_TESTS OFF)
 set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 set(MUJOCO_MPC_MUJOCO_GIT_TAG
-    893c4042302e5a5738dbc462466e746f2bbc1ea5
+    #893c4042302e5a5738dbc462466e746f2bbc1ea5 old commit from mjpc
+    7c7a94f611335f659b962f829e03627bff5a4dad
     CACHE STRING "Git revision for MuJoCo."
 )
 
@@ -68,7 +69,8 @@ findorfetch(
   LIBRARY_NAME
   mujoco
   GIT_REPO
-  https://github.com/google-deepmind/mujoco.git
+  #https://github.com/google-deepmind/mujoco.git
+  https://github.com/DMackRus/mujoco.git
   GIT_TAG
   ${MUJOCO_MPC_MUJOCO_GIT_TAG}
   TARGETS
