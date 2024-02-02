@@ -112,63 +112,322 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                             int dim_state, int dim_action, int dim_sensor, int T){
 
 
-    // Offset variables for state transition matrices
+    // Offset variables in time dimension for A, B, C, D matrices
     int nA = dim_state * dim_state;
     int nB = dim_state * dim_action;
     int nC = dim_sensor * dim_state;
     int nD = dim_sensor * dim_action;
 
-    int last_index = 0;
+    // This method works for full matrix interpolation and fast
+//    int last_index = 0;
+//    for(int t = 1; t < T; t++){
+//
+//        if(keypoints[t].size() == 0){
+//            continue;
+//        }
+//
+//        for(int i = last_index + 1; i < t; i++){
+//
+//            // proportion between 0 and 1 between last_index and t
+//            double tt = double(i - last_index) / double(t - last_index);
+//
+//            // A
+//            double *Ai = DataAt(A, i * nA);
+//            double *AL = DataAt(A, last_index * nA);
+//            double *AU = DataAt(A, t * nA);
+//
+//            mju_scl(Ai, AL, 1.0 - tt, nA);
+//            mju_addToScl(Ai, AU, tt, nA);
+//
+//            // B
+//            double *Bi = DataAt(B, i * nB);
+//            double *BL = DataAt(B, last_index * nB);
+//            double *BU = DataAt(B, t * nB);
+//
+//            mju_scl(Bi, BL, 1.0 - tt, nB);
+//            mju_addToScl(Bi, BU, tt, nB);
+//
+//            // C
+//            double *Ci = DataAt(C, i * nC);
+//            double *CL = DataAt(C, last_index * nC);
+//            double *CU = DataAt(C, t * nC);
+//
+//            mju_scl(Ci, CL, 1.0 - tt, nC);
+//            mju_addToScl(Ci, CU, tt, nC);
+//
+//            // D
+//            double *Di = DataAt(D, i * nD);
+//            double *DL = DataAt(D, last_index * nD);
+//            double *DU = DataAt(D, t * nD);
+//
+//            mju_scl(Di, DL, 1.0 - tt, nD);
+//            mju_addToScl(Di, DU, tt, nD);
+//
+//        }
+//
+//        last_index = t;
+//    }
 
-    for(int t = 1; t < keypoints.size(); t++){
+    // TODO(DMackRus) - not certain if this is always the case that qvel = qpos
+    // offset for velocity elements
 
-        // Skip this time index if derivatives already computed
-        if(keypoints[t].size() == 0){
+    int dof = dim_state / 2;
+
+    // Assign last indices array to all zeros. All columns
+    // HAVE to be computed at t = 0.
+    int *last_indices = new int[keypoints[0].size()];
+
+    for(int i = 0; i < keypoints[0].size(); i++){
+        last_indices[i] = 0;
+    }
+
+    // Columnwise interpolation using mju_scl and mju_addToScl
+    // Loop through trajectory horizon and perform interpolation
+    for(int t = 1; t < T; t++) {
+
+        // Skip this time index if all derivatives computed via F.D
+        if (keypoints[t].size() == 0) {
             continue;
         }
 
+        // Loop through all the columns at this time index
+        for (int col : keypoints[t]) {
 
-        for(int i = last_index + 1; i < t; i++){
+            for(int i = last_indices[col] + 1; i < t; i++){
 
-            // proportion between 0 and 1 between last_index and t
-            double tt = double(i - last_index) / double(t - last_index);
+                double tt = double(i - last_indices[col]) / double(t - last_indices[col]);
 
-            // A
-            double *Ai = DataAt(A, i * nA);
-            double *AL = DataAt(A, last_index * nA);
-            double *AU = DataAt(A, t * nA);
+                // ---------------------------- A matrices -------------------------------------
 
-            mju_scl(Ai, AL, 1.0 - tt, nA);
-            mju_addToScl(Ai, AU, tt, nA);
+                // Position and velocity column that we are interpolating
+                double *A_pi = DataAt(A, (nA * i) + (col * dim_state));
+                double *A_vi = DataAt(A, (nA * i) + (col * dim_state) + (dim_state * dof));
 
-            // B
-            double *Bi = DataAt(B, i * nB);
-            double *BL = DataAt(B, last_index * nB);
-            double *BU = DataAt(B, t * nB);
+                // Position and velocity column that we are interpolating from
+                double *A_pL = DataAt(A, (last_indices[col] * nA) + (col * dim_state));
+                double *A_vL = DataAt(A, (last_indices[col] * nA) + (col * dim_state) + (dim_state * dof));
 
-            mju_scl(Bi, BL, 1.0 - tt, nB);
-            mju_addToScl(Bi, BU, tt, nB);
+                // Position and velocity column that we are interpolating to
+                double *A_pU = DataAt(A, (t * nA) + (col * dim_state));
+                double *A_vU = DataAt(A, (t * nA) + (col * dim_state) + (dim_state * dof));
 
-            // C
-            double *Ci = DataAt(C, i * nC);
-            double *CL = DataAt(C, last_index * nC);
-            double *CU = DataAt(C, t * nC);
+                // Perform the interpolation
+                mju_scl(A_pi, A_pL, 1.0 - tt, dim_state);
+                mju_addToScl(A_pi, A_pU, tt, dim_state);
 
-            mju_scl(Ci, CL, 1.0 - tt, nC);
-            mju_addToScl(Ci, CU, tt, nC);
+                mju_scl(A_vi, A_vL, 1.0 - tt, dim_state);
+                mju_addToScl(A_vi, A_vU, tt, dim_state);
 
-            // D
-            double *Di = DataAt(D, i * nD);
-            double *DL = DataAt(D, last_index * nD);
-            double *DU = DataAt(D, t * nD);
+                // ---------------------------- B matrices -------------------------------------
 
-            mju_scl(Di, DL, 1.0 - tt, nD);
-            mju_addToScl(Di, DU, tt, nD);
+                // Perform a check that the column is within the range of the B matrix
+                // TODO(DMackRus) <= or < ?
+                if(col <= dim_action){
 
+                        // Position and velocity column that we are interpolating
+                        double *B_i = DataAt(B, (i * nB) + (col * dim_state));
+
+                        // Position and velocity column that we are interpolating from
+                        double *B_L = DataAt(B, (last_indices[col] * nB) + (col * dim_state));
+
+                        // Position and velocity column that we are interpolating to
+                        double *B_U = DataAt(B, (t * nB) + (col * dim_state));
+
+                        // Perform the interpolation
+                        mju_scl(B_i, B_L, 1.0 - tt, dim_state);
+                        mju_addToScl(B_i, B_U, tt, dim_state);
+                }
+
+                // ---------------------------- C matrices -------------------------------------
+
+                // Position and velocity column that we are interpolating
+                double *C_pi = DataAt(C, (i * nC) + (col * dim_sensor));
+                double *C_vi = DataAt(C, (i * nC) + (col * dim_sensor) + (dim_sensor * dof));
+
+                // Position and velocity column that we are interpolating from
+                double *C_pL = DataAt(C, (last_indices[col] * nC) + (col * dim_sensor));
+                double *C_vL = DataAt(C, (last_indices[col] * nC) + (col * dim_sensor) + (dim_sensor * dof));
+
+                // Position and velocity column that we are interpolating to
+                double *C_pU = DataAt(C, (t * nC) + (col * dim_sensor));
+                double *C_vU = DataAt(C, (t * nC) + (col * dim_sensor) + (dim_sensor * dof));
+
+                // Perform the interpolation
+                mju_scl(C_pi, C_pL, 1.0 - tt, dim_sensor);
+                mju_addToScl(C_pi, C_pU, tt, dim_sensor);
+
+                mju_scl(C_vi, C_vL, 1.0 - tt, dim_sensor);
+                mju_addToScl(C_vi, C_vU, tt, dim_sensor);
+
+                // ---------------------------- D matrices -------------------------------------
+
+                // Perform a check that the column is within the range of the D matrix
+                if(col < dim_action){
+
+                    // Position and velocity column that we are interpolating
+                    double *D_i = DataAt(D, (i * nD) + (col * dim_sensor));
+
+                    // Position and velocity column that we are interpolating from
+                    double *D_L = DataAt(D, (last_indices[col] * nD) + (col * dim_sensor));
+
+                    // Position and velocity column that we are interpolating to
+                    double *D_U = DataAt(D, (t * nD) + (col * dim_sensor));
+
+                    // Perform the interpolation
+                    mju_scl(D_i, D_L, 1.0 - tt, dim_sensor);
+                    mju_addToScl(D_i, D_U, tt, dim_sensor);
+                }
+            }
+            last_indices[col] = t;
         }
-
-        last_index = t;
     }
+
+    // Lets try print the matrices and see if we can see null values??
+//    for(int t = 0; t < T; t++){
+//        std::cout << "timestep: " << t << "\n";
+//        for(int i = 0; i < dim_state; i++){
+//            for(int j = 0; j < dim_state; j++){
+//                std::cout << A[t * nA + i * dim_state + j] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+//    }
+
+    // B matrices
+//    for(int t = 0; t < T; t++){
+//        std::cout << "timestep: " << t << "\n";
+//        for(int i = 0; i < dim_state; i++){
+//            for(int j = 0; j < dim_action; j++){
+//                std::cout << B[t * nB + i * dim_action + j] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+//    }
+
+    // C matrices
+//    for(int t = 0; t < T; t++){
+//        std::cout << "timestep: " << t << "\n";
+//        for(int i = 0; i < dim_sensor; i++){
+//            for(int j = 0; j < dim_state; j++){
+//                std::cout << C[t * nC + i * dim_state + j] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+//    }
+
+
+
+
+    // Trying to do the interpolation myself - seems slow atm, and also doesnt work
+    // Loop through trajectory horizon and perform interpolation
+//    for(int t = 1; t < T; t++) {
+//
+//        // Skip this time index if derivatives already computed
+//        if (keypoints[t].size() == 0) {
+//            continue;
+//        }
+//
+//        // Loop through all the columns at this time index
+//        for (int col: keypoints[t]) {
+//
+//            // A matrices - dim_state is how many rows in A matrix
+//            for (int i = 0; i < dim_state; i++) {
+//
+//                //Start and end values for interpolation
+//                mjtNum start_val_pos = A[nA * last_indices[col] + (col * dim_state) + i];
+//                mjtNum end_val_pos = A[nA * t + (col * dim_state) + i];
+//
+//                // Amount to add per time step between start and end
+//                mjtNum pos_add = (end_val_pos - start_val_pos) / (t - last_indices[col]);
+//
+//                // Do the same for velocity elements in the A matrix
+//                mjtNum start_val_vel = A[(nA * last_indices[col]) + (col * dim_state) + (dim_state * dof) + i];
+//                mjtNum end_val_vel = A[(nA * t) + (col * dim_state) + (dim_state * dof) + i];
+//
+//                // Amount to add per time step between start and end
+//                mjtNum vel_add = (end_val_vel - start_val_vel) / (t - last_indices[col]);
+//
+//                // Loop through from previous keypoint to now, interpolating all values
+//                // in the columns for that dof
+//                for (int j = last_indices[col]; j < t; j++) {
+//                    A[nA * j + (col * dim_state) + i] = start_val_pos + ((j - last_indices[col]) * pos_add);
+//                    A[nA * j + (col * dim_state) + (dim_state * dof) + i] =
+//                            start_val_vel + ((j - last_indices[col]) * vel_add);
+//                }
+//            }
+//
+//            // B matrices - dim_state is how many rows in the B matrix
+//            for (int i = 0; i < dim_state; i++) {
+//
+//                // Perform a check that the column is within the range of the B matrix
+//                // i.e not all dofs are actuated
+//                if (col > dim_action) {
+//                    continue;
+//                }
+//
+//                // Start and end values for interpolation
+//                mjtNum start_val_ctrl = B[(nB * last_indices[col]) + (col * dim_state) + i];
+//                mjtNum end_val_ctrl = B[nB * t + (col * dim_state) + i];
+//
+//                // Amount to add per timestep between start and end
+//                mjtNum ctrl_add = (end_val_ctrl - start_val_ctrl) / (t - last_indices[col]);
+//
+//                for (int j = last_indices[col]; j < t; j++) {
+//                    B[nB * j + (col * dim_state) + i] = start_val_ctrl + ((j - last_indices[col]) * ctrl_add);
+//                }
+//            }
+//
+//            // C matrices - dim_sensor is how many rows in the C matrix
+//            for (int i = 0; i < dim_sensor; i++) {
+//
+//                // Start and end values for interpolation
+//                mjtNum start_val_pos = C[nC * last_indices[col] + (col * dim_sensor) + i];
+//                mjtNum end_val_pos = C[nC * t + (col * dim_sensor) + i];
+//
+//                // Amount to add per timestep between start and end
+//                mjtNum pos_add = (end_val_pos - start_val_pos) / (t - last_indices[col]);
+//
+//                mjtNum start_val_vel = C[nC * last_indices[col] + (col * dim_sensor) + (dim_sensor * dof) + i];
+//                mjtNum end_val_vel = C[nC * t + (col * dim_sensor) + (dim_sensor * dof) + i];
+//
+//                // Amount to add per timestep between start and end
+//                mjtNum vel_add = (end_val_vel - start_val_vel) / (t - last_indices[col]);
+//
+//                for (int j = last_indices[col]; j < t; j++) {
+//                    C[nC * j + (col * dim_sensor) + i] = start_val_pos + ((j - last_indices[col]) * pos_add);
+//                    C[nC * j + (col * dim_sensor) + (dim_sensor * dof) + i] =
+//                            start_val_vel + ((j - last_indices[col]) * vel_add);
+//                }
+//            }
+//
+//            // D matrices - dim_sensor is how many rows in the D matrix
+//            for (int i = 0; i < dim_sensor; i++) {
+//
+//                // Perform a check that the column is within the range of the D matrix
+//                // i.e not all dofs are actuated
+//                if (col > dim_action) {
+//                    continue;
+//                }
+//
+//                // Start and end values for interpolation
+//                mjtNum start_val_ctrl = D[nD * last_indices[col] + (col * dim_sensor) + i];
+//                mjtNum end_val_ctrl = D[nD * t + (col * dim_sensor) + i];
+//
+//                // Amount to add per timestep between start and end
+//                mjtNum ctrl_add = (end_val_ctrl - start_val_ctrl) / (t - last_indices[col]);
+//
+//                for (int j = last_indices[col]; j < t; j++) {
+//                    D[nD * j + (col * dim_sensor) + i] = start_val_ctrl + ((j - last_indices[col]) * ctrl_add);
+//                }
+//            }
+//        }
+//    }
+
+
+
+
+
+
 
 }
 
