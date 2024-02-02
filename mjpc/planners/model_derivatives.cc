@@ -293,23 +293,11 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
             // Jacobians
             if (t == T - 1) {
                 // Jacobians
-//                mjd_transitionFD(m, d, tol, mode, nullptr, nullptr,
-//                                 DataAt(C, t * (dim_sensor * dim_state_derivative)),
-//                                 nullptr);
-
                 mjd_transitionFD_columns(m, d, tol, mode, nullptr, nullptr,
                                          DataAt(C, t * (dim_sensor * dim_state_derivative)),
                                          nullptr, test, n);
             } else {
                 // derivatives
-//                mjd_transitionFD(
-//                        m, d, tol, mode,
-//                        DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-//                        DataAt(B, t * (dim_state_derivative * dim_action)),
-//                        DataAt(C, t * (dim_sensor * dim_state_derivative)),
-//                        DataAt(D, t * (dim_sensor * dim_action)));
-
-
                 mjd_transitionFD_columns(m, d, tol, mode,
                                             DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
                                             DataAt(B, t * (dim_state_derivative * dim_action)),
@@ -337,15 +325,14 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
     for(int t = 1; t < keypoints.size(); t++){
 
         // Skip this time index if derivatives already computed
-        if(keypoints.size() == 0){
+        if(keypoints[t].size() == 0){
             continue;
         }
 
-        // use current index to interpolate to
 
         for(int i = last_index + 1; i < t; i++){
 
-            // Maybe?
+            // proportion between 0 and 1 between last_index and t
             double tt = double(i - last_index) / double(t - last_index);
 
             // A
@@ -357,7 +344,7 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
             mju_addToScl(Ai, AU, tt, nA);
 
             // B
-            double *Bi = DataAt(B, t * nB);
+            double *Bi = DataAt(B, i * nB);
             double *BL = DataAt(B, last_index * nB);
             double *BU = DataAt(B, t * nB);
 
@@ -365,7 +352,7 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
             mju_addToScl(Bi, BU, tt, nB);
 
             // C
-            double *Ci = DataAt(C, t * nC);
+            double *Ci = DataAt(C, i * nC);
             double *CL = DataAt(C, last_index * nC);
             double *CU = DataAt(C, t * nC);
 
@@ -373,12 +360,13 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
             mju_addToScl(Ci, CU, tt, nC);
 
             // D
-            double *Di = DataAt(D, t * nD);
+            double *Di = DataAt(D, i * nD);
             double *DL = DataAt(D, last_index * nD);
             double *DU = DataAt(D, t * nD);
 
             mju_scl(Di, DL, 1.0 - tt, nD);
             mju_addToScl(Di, DU, tt, nD);
+
         }
 
         last_index = t;
