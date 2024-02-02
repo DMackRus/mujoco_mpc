@@ -466,6 +466,12 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
               settings.fd_tolerance, settings.fd_mode, pool, keypoints);
 
       // Interpolate derivatives
+      key_point_generator.InterpolateDerivatives(keypoints,
+                                                 model_derivative.A,
+                                                 model_derivative.B,
+                                                 model_derivative.C,
+                                                 model_derivative.D,
+                                                 dim_state, dim_action, dim_sensor, horizon);
 
   }
   else{

@@ -40,6 +40,10 @@
 #include <string>
 #include <iostream>
 
+#include "mjpc/utilities.h"
+
+namespace mjpc {
+
 enum keypoint_method_names{
     SET_INTERVAL = 0,
     ADAPTIVE_JERK = 1,
@@ -83,7 +87,7 @@ public:
                                 std::vector<double> &B,
                                 std::vector<double> &C,
                                 std::vector<double> &D,
-                                int dim_state, int dim_action, int T);
+                                int dim_state, int dim_action, int dim_sensor, int T);
 
 private:
 
@@ -92,6 +96,6 @@ private:
 
 };
 
-
+}  // namespace mjpc
 
 #endif //MJPC_PLANNERS_KEYPOINTGENERATOR_H

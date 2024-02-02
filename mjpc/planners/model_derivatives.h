@@ -23,9 +23,6 @@
 #include "mjpc/threadpool.h"
 #include "mjpc/utilities.h"
 
-#define TM_START mjtNum _tm = (mjcb_time ? mjcb_time() : 0);
-#define TM_END(i) {d->timer[i].duration += ((mjcb_time ? mjcb_time() : 0) - _tm); d->timer[i].number++;}
-
 namespace mjpc {
 
 // data and methods for model derivatives
@@ -49,11 +46,6 @@ class ModelDerivatives {
                const double* x, const double* u, const double* h, int dim_state,
                int dim_state_derivative, int dim_action, int dim_sensor, int T,
                double tol, int mode, ThreadPool& pool);
-
-  void ComputeSkips(const mjModel* m, const std::vector<UniqueMjData>& data,
-                    const double* x, const double* u, const double* h, int dim_state,
-                    int dim_state_derivative, int dim_action, int dim_sensor, int T,
-                    double tol, int mode, ThreadPool& pool, int skip);
 
   //TODO (DMackRus) - test this function rigorously
   void ComputeKeypoints(const mjModel* m, const std::vector<UniqueMjData>& data,
