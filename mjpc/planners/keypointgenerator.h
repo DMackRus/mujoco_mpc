@@ -59,13 +59,13 @@ struct keypoint_method{
     std::vector<double> velocity_change_thresholds;
 };
 
-class KeyPointGenerator{
+class KeypointGenerator{
 public:
     // Constructor
-    KeyPointGenerator() = default;
+    KeypointGenerator() = default;
 
     // Destructor
-    ~KeyPointGenerator() = default;
+    ~KeypointGenerator() = default;
 
     /**
      * Generates a set of key-points per degree of freedom over a trajectory depending on the
@@ -82,6 +82,25 @@ public:
     std::vector<std::vector<int>> GenerateKeyPoints(keypoint_method keypoint_method,
                                                     int T, const double* x, int dim_state);
 
+    /**
+     * Interpolates the state transition matrices (A, B, C, D) between key-points
+     * via linear interpolation approximate a full set. Before this function is
+     * called, the key-points must be generated and the dynamics derivatives
+     * computed at each key-point via finite-differencing,
+     *
+     * @param keypoints - A 2D vector of keypoints. The first dimesnsion is
+     *                    time along the trajectory. At each index, the integers
+     *                    specify what degree of freedom to compute dynamics gradients
+     *                    for.
+     * @param A - Dynamics gradients w.r.t state vector (dim_state_derivative * dim_state_derivative * T)
+     * @param B - Dynamics gradients w.r.t action vector (dim_state_derivative * dim_action * T)
+     * @param C - Sensor gradients w.r.t state vector (dim_sensor * dim_state_derivative * T)
+     * @param D - Sensor gradients w.r.t action vector (dim_sensor * dim_action * T)
+     * @param dim_state - Dimension of the state vector
+     * @param dim_action - Dimension of the action vector
+     * @param dim_sensor - Dimension of the sensor vector
+     * @param T - Optimisation horizon
+     */
     void InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
                                 std::vector<double> &A,
                                 std::vector<double> &B,
@@ -91,7 +110,13 @@ public:
 
 private:
 
+    std::vector<std::vector<int>> GenerateKeypoints_AdaptiveJerk(keypoint_method keypoint_method,
+                                                                 int T, int dim_state,
+                                                                 double* jerk_profile);
+
     double* GenerateJerkProfile(int T, const double* x, int dim_state);
+
+
 
 
 };

@@ -65,10 +65,16 @@ class ModelDerivatives {
   std::vector<double> D;  // output Jacobians wrt action
                           //   (T * dim_sensor * dim_action)
 
+    std::vector<double> AT;  // model Jacobians wrt state
+    //   (T * dim_state_derivative * dim_state_derivative)
+    std::vector<double> BT;  // model Jacobians wrt action
+    //   (T * dim_state_derivative * dim_action)
+    std::vector<double> CT;  // output Jacobians wrt state
+    //   (T * dim_sensor * dim_state_derivative)
+    std::vector<double> DT;  // output Jacobians wrt action
+    //   (T * dim_sensor * dim_action)
+
 private:
-    // Keypoint indices
-    std::vector<int> evaluate_;
-    std::vector<int> interpolate_;
 
 };
 

@@ -135,7 +135,7 @@ class iLQGPlanner : public Planner {
   iLQGSettings settings;
 
   // Keypoint object
-  KeyPointGenerator key_point_generator;
+  KeypointGenerator key_point_generator;
 
   // Keypoint variables to store GUI values
   int active_keypoint_method = 0;

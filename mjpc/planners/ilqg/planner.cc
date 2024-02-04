@@ -442,6 +442,12 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
       }
       else if(active_keypoint_method == ADAPTIVE_JERK){
           active_method.name = "adaptive_jerk";
+
+          // Set jerk thresholds from GUI
+          for(int i = 0; i < model->nv; i++){
+              active_method.jerk_thresholds.push_back(jerk_thresholds[i]);
+          }
+
       }
       else if(active_keypoint_method == VELOCITY_CHANGE){
           active_method.name = "velocity_change";
@@ -458,6 +464,29 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
                                                                                       candidate_policy[0].trajectory.states.data(),
                                                                                       dim_state);
 
+      // TODO(DMackRus) - delete this after fixed.
+      // Temporary test measure, clear contents of A matrix from last
+//      for(int t = 0; t < horizon; t++){
+//          for(int i = 0; i < dim_state_derivative * dim_state_derivative; i++){
+//              model_derivative.A[t * dim_state_derivative * dim_state_derivative + i] = 0.0;
+//          }
+//      }
+//
+//      std::cout << "before compute derivatives called \n";
+//      for(int t = 0; t < 2; t++){
+//          // print whole A matrix
+//          std::cout << "---------------- t = " << t << " ----------------\n";
+//          for(int j = 0; j < dim_state; j++){
+//              for(int i = 0; i < dim_state; i++){
+//                  std::cout << model_derivative.A[(t * dim_state) + (i * dim_state) + j] << " ";
+//
+//              }
+//              std::cout << "\n";
+//          }
+//
+//      }
+
+      // Compute derivatives
       model_derivative.ComputeKeypoints(
               model, data_, candidate_policy[0].trajectory.states.data(),
               candidate_policy[0].trajectory.actions.data(),
@@ -467,11 +496,31 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
       // Interpolate derivatives
       key_point_generator.InterpolateDerivatives(keypoints,
-                                                 model_derivative.A,
-                                                 model_derivative.B,
-                                                 model_derivative.C,
-                                                 model_derivative.D,
+                                                 model_derivative.AT,
+                                                 model_derivative.BT,
+                                                 model_derivative.CT,
+                                                 model_derivative.DT,
                                                  dim_state, dim_action, dim_sensor, horizon);
+
+      for(int t = 0; t < horizon; t++){
+          if(t != horizon - 1){
+              mju_transpose(DataAt(model_derivative.A, t * (dim_state_derivative * dim_state_derivative)),
+                            DataAt(model_derivative.AT, t * (dim_state_derivative * dim_state_derivative)),
+                            dim_state_derivative, dim_state_derivative);
+
+              mju_transpose(DataAt(model_derivative.B, t * (dim_state_derivative * dim_action)),
+                            DataAt(model_derivative.BT, t * (dim_state_derivative * dim_action)),
+                            dim_action, dim_state_derivative);
+
+              mju_transpose(DataAt(model_derivative.D, t * (dim_sensor * dim_action)),
+                            DataAt(model_derivative.DT, t * (dim_sensor * dim_action)),
+                            dim_action, dim_sensor);
+          }
+
+          mju_transpose(DataAt(model_derivative.C, t * (dim_sensor * dim_state_derivative)),
+                        DataAt(model_derivative.CT, t * (dim_sensor * dim_state_derivative)),
+                        dim_state_derivative, dim_sensor);
+      }
 
   }
   else{
@@ -482,11 +531,6 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
               dim_state_derivative, dim_action, dim_sensor, horizon,
               settings.fd_tolerance, settings.fd_mode, pool);
   }
-
-//  std::cout << "Size of A: " << model_derivative.A.size() << "\n";
-
-
-
 
   // stop timer
   double model_derivative_time = GetDuration(model_derivative_start);

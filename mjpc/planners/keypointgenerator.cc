@@ -16,8 +16,8 @@
 
 namespace mjpc {
 
-std::vector<std::vector<int>> KeyPointGenerator::GenerateKeyPoints(keypoint_method keypoint_method,
-                                                int T, const double* x, int dim_state){
+std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_method keypoint_method,
+                                                                   int T, const double* x, int dim_state){
 
     // Example how keypoint indices are stored, first dimension of vector is time
     // along the trajectory. at each index, is another vector for the degree of
@@ -67,10 +67,17 @@ std::vector<std::vector<int>> KeyPointGenerator::GenerateKeyPoints(keypoint_meth
             }
         }
     }
-//    else if(keypoint_method.name == "Adaptive_Jerk"){
-//        double *jerk_profile = GenerateJerkProfile(T, trajectory_states);
-//        keypoints = GenerateKeyPointsAdaptive(horizon, jerk_profile, keypoint_method);
-//    }
+    else if(keypoint_method.name == "adaptive_jerk"){
+        double *jerk_profile = GenerateJerkProfile(T, x, dim_state);
+        // print the jerk profile
+//        for(int i = 0; i < T - 2; i++){
+//            for(int j = 0; j < dof; j++){
+//                std::cout << jerk_profile[(i * dof) + j] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+        keypoints = GenerateKeypoints_AdaptiveJerk(keypoint_method, T, dim_state, jerk_profile);
+    }
 //    else if(keypoint_method.name == "iterative_error"){
 //        computed_keypoints.clear();
 //        physics_simulator->initModelForFiniteDifferencing();
@@ -86,31 +93,114 @@ std::vector<std::vector<int>> KeyPointGenerator::GenerateKeyPoints(keypoint_meth
         std::cout << "ERROR: keyPointsMethod not recognised \n";
     }
 
-    // Enforce that last time step is evaluated for all dofs, otherwise nothing to interpolate to
-    keypoints.back().clear();
-    for(int i = 0; i < dof; i++){
-        keypoints.back().push_back(i);
-    }
+    // Enforce that last two time-steps have all dofs in keypoint list
+    keypoints[T - 2] = keypoints[0];
+    keypoints[T - 1] = keypoints[0];
+
+
+    // TEMPORARY TEST
+//    for(int t = 0; t < T; t++){
+//        keypoints[t].clear();
+//    }
+
+    // Sample all dofs at every interval, but dof 0 every other one
+//    for(int t = 0; t < T; t++){
+//        for(int i = 0; i < dof; i++){
+//            if(t % 2 == 1){
+//
+//            }
+//            else{
+//                keypoints[t].push_back(i);
+//            }
+//        }
+//    }
+
 
 //     Print out the key points
-//    for(int i = 0; i < keypoints.size(); i++){
-//        std::cout << "timestep " << i << ": ";
-//        for(int j = 0; j < keypoints[i].size(); j++){
-//            std::cout << keypoints[i][j] << " ";
-//        }
-//        std::cout << "\n";
-//    }
+    for(int i = 0; i < keypoints.size(); i++){
+        std::cout << "timestep " << i << ": ";
+        for(int j = 0; j < keypoints[i].size(); j++){
+            std::cout << keypoints[i][j] << " ";
+        }
+        std::cout << "\n";
+    }
 
     return keypoints;
 }
 
-void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
-                            std::vector<double> &A,
-                            std::vector<double> &B,
-                            std::vector<double> &C,
-                            std::vector<double> &D,
-                            int dim_state, int dim_action, int dim_sensor, int T){
+//TODO(DMackRus) - Make this line shorter?
+std::vector<std::vector<int>> KeypointGenerator::GenerateKeypoints_AdaptiveJerk(keypoint_method keypoint_method,
+                                                                 int T, int dim_state,
+                                                                 double* jerk_profile){
+    std::vector<std::vector<int>> keypoints;
 
+    // TODO(DMackRus) - this could be wrong sometimes, if qpos != qvel
+    int dof = dim_state / 2;
+
+//    for(int i = 0; i < T - 2; i++){
+//        for(int j = 0; j < dof; j++){
+//            std::cout << jerk_profile[(i * dof) + j] << " ";
+//        }
+//        std::cout << "\n";
+//    }
+
+    for(int t = 0; t < T; t++){
+        keypoints.push_back(std::vector<int>());
+    }
+
+    // Enforce all dofs in keypoint list at t = 0
+    for(int i = 0; i < dof; i++){
+        keypoints[0].push_back(i);
+    }
+
+    int *last_indices = new int[dof];
+
+    for(int i = 0; i < dof; i++){
+        last_indices[i] = 0;
+    }
+
+    // Loop over the trajectory
+    for(int j = 0; j < dof; j++){
+        for(int t = 1; t < T - 2; t++){
+
+            if((t - last_indices[j]) >= keypoint_method.min_N) {
+                // Check if the jerk is above the threshold
+                if (jerk_profile[(t * dof) + j] > keypoint_method.jerk_thresholds[j]) {
+                    keypoints[t].push_back(j);
+                    last_indices[j] = t;
+                }
+            }
+
+            if((t - last_indices[j]) >= keypoint_method.max_N){
+                keypoints[t].push_back(j);
+                last_indices[j] = t;
+            }
+        }
+    }
+
+    return keypoints;
+}
+
+void KeypointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
+                                               std::vector<double> &A,
+                                               std::vector<double> &B,
+                                               std::vector<double> &C,
+                                               std::vector<double> &D,
+                                               int dim_state, int dim_action, int dim_sensor, int T){
+
+    // Check columns have been computed by printing
+//    for(int t = 0; t < 2; t++){
+//        // print whole A matrix
+//        std::cout << "---------------- t = " << t << " ----------------\n";
+//        for(int j = 0; j < dim_state; j++){
+//            for(int i = 0; i < dim_state; i++){
+//                std::cout << A[(t * dim_state) + (i * dim_state) + j] << " ";
+//
+//            }
+//            std::cout << "\n";
+//        }
+//
+//    }
 
     // Offset variables in time dimension for A, B, C, D matrices
     int nA = dim_state * dim_state;
@@ -118,59 +208,8 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
     int nC = dim_sensor * dim_state;
     int nD = dim_sensor * dim_action;
 
-    // This method works for full matrix interpolation and fast
-//    int last_index = 0;
-//    for(int t = 1; t < T; t++){
-//
-//        if(keypoints[t].size() == 0){
-//            continue;
-//        }
-//
-//        for(int i = last_index + 1; i < t; i++){
-//
-//            // proportion between 0 and 1 between last_index and t
-//            double tt = double(i - last_index) / double(t - last_index);
-//
-//            // A
-//            double *Ai = DataAt(A, i * nA);
-//            double *AL = DataAt(A, last_index * nA);
-//            double *AU = DataAt(A, t * nA);
-//
-//            mju_scl(Ai, AL, 1.0 - tt, nA);
-//            mju_addToScl(Ai, AU, tt, nA);
-//
-//            // B
-//            double *Bi = DataAt(B, i * nB);
-//            double *BL = DataAt(B, last_index * nB);
-//            double *BU = DataAt(B, t * nB);
-//
-//            mju_scl(Bi, BL, 1.0 - tt, nB);
-//            mju_addToScl(Bi, BU, tt, nB);
-//
-//            // C
-//            double *Ci = DataAt(C, i * nC);
-//            double *CL = DataAt(C, last_index * nC);
-//            double *CU = DataAt(C, t * nC);
-//
-//            mju_scl(Ci, CL, 1.0 - tt, nC);
-//            mju_addToScl(Ci, CU, tt, nC);
-//
-//            // D
-//            double *Di = DataAt(D, i * nD);
-//            double *DL = DataAt(D, last_index * nD);
-//            double *DU = DataAt(D, t * nD);
-//
-//            mju_scl(Di, DL, 1.0 - tt, nD);
-//            mju_addToScl(Di, DU, tt, nD);
-//
-//        }
-//
-//        last_index = t;
-//    }
-
     // TODO(DMackRus) - not certain if this is always the case that qvel = qpos
     // offset for velocity elements
-
     int dof = dim_state / 2;
 
     // Assign last indices array to all zeros. All columns
@@ -181,7 +220,6 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
         last_indices[i] = 0;
     }
 
-    // Columnwise interpolation using mju_scl and mju_addToScl
     // Loop through trajectory horizon and perform interpolation
     for(int t = 1; t < T; t++) {
 
@@ -194,6 +232,7 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
         for (int col : keypoints[t]) {
 
             for(int i = last_indices[col] + 1; i < t; i++){
+//                std::cout << "interpolating dof " << col << " at time " << i << " from " << last_indices[col] << " to " << t << "\n";
 
                 double tt = double(i - last_indices[col]) / double(t - last_indices[col]);
 
@@ -211,6 +250,11 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                 double *A_pU = DataAt(A, (t * nA) + (col * dim_state));
                 double *A_vU = DataAt(A, (t * nA) + (col * dim_state) + (dim_state * dof));
 
+                // check A_pL and A_vL are not empty
+//                std::cout << "A_pL: " << A_pL[0] << " A_vL: " << A_vL[0] << "\n";
+//                std::cout << "A_pi: " << A_pi[0] << " A_vi: " << A_vi[0] << "\n";
+//                std::cout << "A_pU: " << A_pU[0] << " A_vU: " << A_vU[0] << "\n";
+
                 // Perform the interpolation
                 mju_scl(A_pi, A_pL, 1.0 - tt, dim_state);
                 mju_addToScl(A_pi, A_pU, tt, dim_state);
@@ -221,8 +265,7 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                 // ---------------------------- B matrices -------------------------------------
 
                 // Perform a check that the column is within the range of the B matrix
-                // TODO(DMackRus) <= or < ?
-                if(col <= dim_action){
+                if(col < dim_action){
 
                         // Position and velocity column that we are interpolating
                         double *B_i = DataAt(B, (i * nB) + (col * dim_state));
@@ -232,6 +275,9 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
 
                         // Position and velocity column that we are interpolating to
                         double *B_U = DataAt(B, (t * nB) + (col * dim_state));
+
+//                        std::cout << "B_L: " << B_L[0] << " B_U: " << B_U[0] << "\n";
+//                        std::cout << "B_i: " << B_i[0] << "\n";
 
                         // Perform the interpolation
                         mju_scl(B_i, B_L, 1.0 - tt, dim_state);
@@ -273,254 +319,31 @@ void KeyPointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                     // Position and velocity column that we are interpolating to
                     double *D_U = DataAt(D, (t * nD) + (col * dim_sensor));
 
+//                    std::cout << "D_L: " << D_L[0] << " D_U: " << D_U[0] << "\n";
+//                    std::cout << "D_i: " << D_i[0] << "\n";
+
                     // Perform the interpolation
                     mju_scl(D_i, D_L, 1.0 - tt, dim_sensor);
                     mju_addToScl(D_i, D_U, tt, dim_sensor);
                 }
             }
+            // Update last time index for this column
             last_indices[col] = t;
         }
     }
-
-    // Lets try print the matrices and see if we can see null values??
-//    for(int t = 0; t < T; t++){
-//        std::cout << "timestep: " << t << "\n";
-//        for(int i = 0; i < dim_state; i++){
-//            for(int j = 0; j < dim_state; j++){
-//                std::cout << A[t * nA + i * dim_state + j] << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//    }
-
-    // B matrices
-//    for(int t = 0; t < T; t++){
-//        std::cout << "timestep: " << t << "\n";
-//        for(int i = 0; i < dim_state; i++){
-//            for(int j = 0; j < dim_action; j++){
-//                std::cout << B[t * nB + i * dim_action + j] << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//    }
-
-    // C matrices
-//    for(int t = 0; t < T; t++){
-//        std::cout << "timestep: " << t << "\n";
-//        for(int i = 0; i < dim_sensor; i++){
-//            for(int j = 0; j < dim_state; j++){
-//                std::cout << C[t * nC + i * dim_state + j] << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//    }
-
-
-
-
-    // Trying to do the interpolation myself - seems slow atm, and also doesnt work
-    // Loop through trajectory horizon and perform interpolation
-//    for(int t = 1; t < T; t++) {
-//
-//        // Skip this time index if derivatives already computed
-//        if (keypoints[t].size() == 0) {
-//            continue;
-//        }
-//
-//        // Loop through all the columns at this time index
-//        for (int col: keypoints[t]) {
-//
-//            // A matrices - dim_state is how many rows in A matrix
-//            for (int i = 0; i < dim_state; i++) {
-//
-//                //Start and end values for interpolation
-//                mjtNum start_val_pos = A[nA * last_indices[col] + (col * dim_state) + i];
-//                mjtNum end_val_pos = A[nA * t + (col * dim_state) + i];
-//
-//                // Amount to add per time step between start and end
-//                mjtNum pos_add = (end_val_pos - start_val_pos) / (t - last_indices[col]);
-//
-//                // Do the same for velocity elements in the A matrix
-//                mjtNum start_val_vel = A[(nA * last_indices[col]) + (col * dim_state) + (dim_state * dof) + i];
-//                mjtNum end_val_vel = A[(nA * t) + (col * dim_state) + (dim_state * dof) + i];
-//
-//                // Amount to add per time step between start and end
-//                mjtNum vel_add = (end_val_vel - start_val_vel) / (t - last_indices[col]);
-//
-//                // Loop through from previous keypoint to now, interpolating all values
-//                // in the columns for that dof
-//                for (int j = last_indices[col]; j < t; j++) {
-//                    A[nA * j + (col * dim_state) + i] = start_val_pos + ((j - last_indices[col]) * pos_add);
-//                    A[nA * j + (col * dim_state) + (dim_state * dof) + i] =
-//                            start_val_vel + ((j - last_indices[col]) * vel_add);
-//                }
-//            }
-//
-//            // B matrices - dim_state is how many rows in the B matrix
-//            for (int i = 0; i < dim_state; i++) {
-//
-//                // Perform a check that the column is within the range of the B matrix
-//                // i.e not all dofs are actuated
-//                if (col > dim_action) {
-//                    continue;
-//                }
-//
-//                // Start and end values for interpolation
-//                mjtNum start_val_ctrl = B[(nB * last_indices[col]) + (col * dim_state) + i];
-//                mjtNum end_val_ctrl = B[nB * t + (col * dim_state) + i];
-//
-//                // Amount to add per timestep between start and end
-//                mjtNum ctrl_add = (end_val_ctrl - start_val_ctrl) / (t - last_indices[col]);
-//
-//                for (int j = last_indices[col]; j < t; j++) {
-//                    B[nB * j + (col * dim_state) + i] = start_val_ctrl + ((j - last_indices[col]) * ctrl_add);
-//                }
-//            }
-//
-//            // C matrices - dim_sensor is how many rows in the C matrix
-//            for (int i = 0; i < dim_sensor; i++) {
-//
-//                // Start and end values for interpolation
-//                mjtNum start_val_pos = C[nC * last_indices[col] + (col * dim_sensor) + i];
-//                mjtNum end_val_pos = C[nC * t + (col * dim_sensor) + i];
-//
-//                // Amount to add per timestep between start and end
-//                mjtNum pos_add = (end_val_pos - start_val_pos) / (t - last_indices[col]);
-//
-//                mjtNum start_val_vel = C[nC * last_indices[col] + (col * dim_sensor) + (dim_sensor * dof) + i];
-//                mjtNum end_val_vel = C[nC * t + (col * dim_sensor) + (dim_sensor * dof) + i];
-//
-//                // Amount to add per timestep between start and end
-//                mjtNum vel_add = (end_val_vel - start_val_vel) / (t - last_indices[col]);
-//
-//                for (int j = last_indices[col]; j < t; j++) {
-//                    C[nC * j + (col * dim_sensor) + i] = start_val_pos + ((j - last_indices[col]) * pos_add);
-//                    C[nC * j + (col * dim_sensor) + (dim_sensor * dof) + i] =
-//                            start_val_vel + ((j - last_indices[col]) * vel_add);
-//                }
-//            }
-//
-//            // D matrices - dim_sensor is how many rows in the D matrix
-//            for (int i = 0; i < dim_sensor; i++) {
-//
-//                // Perform a check that the column is within the range of the D matrix
-//                // i.e not all dofs are actuated
-//                if (col > dim_action) {
-//                    continue;
-//                }
-//
-//                // Start and end values for interpolation
-//                mjtNum start_val_ctrl = D[nD * last_indices[col] + (col * dim_sensor) + i];
-//                mjtNum end_val_ctrl = D[nD * t + (col * dim_sensor) + i];
-//
-//                // Amount to add per timestep between start and end
-//                mjtNum ctrl_add = (end_val_ctrl - start_val_ctrl) / (t - last_indices[col]);
-//
-//                for (int j = last_indices[col]; j < t; j++) {
-//                    D[nD * j + (col * dim_sensor) + i] = start_val_ctrl + ((j - last_indices[col]) * ctrl_add);
-//                }
-//            }
-//        }
-//    }
-
-
-
-
-
-
-
 }
 
-//void InterpolateDerivatives(std::vector<std::vector<int>> keypoints,
-//                            std::vector<double> &A,
-//                            std::vector<double> &B,
-//                            std::vector<double> &C,
-//                            std::vector<double> &D,
-//                            int dim_state, int dim_action, int T){
-//
-//    //TODO - DMackRus, this could be wrong in situations when qvel != qpos
-//    int num_dof = dim_state / 2;
-//
-//    // Create an array to track start_indices of current interpolation per dof
-//    int *start_indices = new int[num_dof];
-//    for(int i = 0; i < num_dof; i++){
-//        start_indices[i] = 0;
-//    }
-//
-//    // Loop through all the time indices - can skip the first
-//    // index as we preload the first index as the start index for all dofs.
-//    for(int t = 1; t < T; t++){
-//        // Loop through all the dofs
-//        for(int dof = 0; dof < num_dof; dof++){
-//            // Check if this time index contains any key-points for any dof.
-//            std::vector<int> columns = keypoints[t];
-//
-//            // If there are no keypoints, continue onto next run of the loop
-//            if(columns.size() == 0){
-//                continue;
-//            }
-//
-//            for(int j = 0; j < columns.size(); j++){
-//
-//                // If there is a match, interpolate between the start index and the current index
-//                // For the given columns
-//                if(dof == columns[j]){
-//
-//
-//                    // A, B, C, D matrices are column
-//
-//                    // Starting index of top left of A matrix for last keypoint.
-////                    int A_index_time = (start_indices[dof] * dim_state * dim_state);
-//
-//                    // Starting index of top left of B matrix for last keypoint.
-////                    int B_index_time = (start_indices[dof] * dim_state * dim_action);
-//
-//
-////                    int start_val_pos = A[A_index_time + (dof * dim_state)];
-////                    int start_val_vel = A[A_index_time + (dim_state * (dim_state / 2)) + (dof * dim_state)];
-////                    int start_val_ctrl = B[B_index_time + (dof * dim_action)];
-//
-//                    // Loop through from previous keypoint to now, interpolating all values
-//                    // in the columns for that dof.
-//                    for(int k = start_indices[dof]; k < t; k++){
-//
-//                    }
-//
-//
-////                    cout << "dof: " << i << " end index: " << t << " start index: " << startIndices[i] << "\n";
-////                    MatrixXd startACol1 = A[startIndices[i]].block(dof, i, dof, 1);
-////                    MatrixXd endACol1 = A[t].block(dof, i, dof, 1);
-////                    MatrixXd addACol1 = (endACol1 - startACol1) / (t - startIndices[i]);
-////
-////                    // Same again for column 2 which is dof + i
-////                    MatrixXd startACol2 = A[startIndices[i]].block(dof, i + dof, dof, 1);
-////                    MatrixXd endACol2 = A[t].block(dof, i + dof, dof, 1);
-////                    MatrixXd addACol2 = (endACol2 - startACol2) / (t - startIndices[i]);
-////
-////                    if(i < num_ctrl){
-////                        startB = B[startIndices[i]].block(dof, i, dof, 1);
-////                        endB = B[t].block(dof, i, dof, 1);
-////                        addB = (endB - startB) / (t - startIndices[i]);
-////                    }
-////
-////                    for(int k = startIndices[i]; k < t; k++){
-////                        A[k].block(dof, i, dof, 1) = startACol1 + ((k - startIndices[i]) * addACol1);
-////
-////                        A[k].block(dof, i + dof, dof, 1) = startACol2 + ((k - startIndices[i]) * addACol2);
-////
-////                        if(i < num_ctrl){
-////                            B[k].block(dof, i, dof, 1) = startB + ((k - startIndices[i]) * addB);
-////                        }
-////                    }
-//                    start_indices[dof] = t;
-//                }
-//            }
-//        }
-//    }
-//}
+// TODO(DMackRus) - consider whether 0 and 1 should be empty or last 2 indices
+// TODO(DMackRus) - could this be done with mju_ functions?
+double* KeypointGenerator::GenerateJerkProfile(int T, const double* x, int dim_state){
+    double* jerk_profile = new double[(T - 2) * (dim_state/2)];
 
-double* GenerateJerkProfile(int T, const double* x, int dim_state){
-    double* jerk_profile = new double[T * (dim_state/2)];
+    for(int t = 2; t < T; t++){
+        for(int i = 0; i < dim_state/2; i++){
+            double qdd = (x[(t * dim_state) + i] - 2 * x[((t - 1) * dim_state) + i] + x[((t - 2) * dim_state) + i]);
+            jerk_profile[((t - 2) * (dim_state/2)) + i] = qdd;
+        }
+    }
 
     return jerk_profile;
 }
