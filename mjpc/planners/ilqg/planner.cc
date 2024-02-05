@@ -477,10 +477,10 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
       // time this
         auto time_start_inter = std::chrono::steady_clock::now();
       key_point_generator.InterpolateDerivatives(keypoints,
-                                                 model_derivative.A,
-                                                 model_derivative.B,
-                                                 model_derivative.C,
-                                                 model_derivative.D,
+                                                 model_derivative.AT,
+                                                 model_derivative.BT,
+                                                 model_derivative.CT,
+                                                 model_derivative.DT,
                                                  dim_state, dim_action, dim_sensor, horizon);
 
         // end timer
@@ -490,31 +490,51 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
       //time this
       auto time_start = std::chrono::steady_clock::now();
 
+//      for(int t = 0; t < horizon; t++){
+//          if(t != horizon - 1){
+//              mju_transpose(DataAt(model_derivative.AT, t * (dim_state_derivative * dim_state_derivative)),
+//                            DataAt(model_derivative.A, t * (dim_state_derivative * dim_state_derivative)),
+//                            dim_state_derivative, dim_state_derivative);
+//
+//              mju_transpose(DataAt(model_derivative.BT, t * (dim_state_derivative * dim_action)),
+//                            DataAt(model_derivative.B, t * (dim_state_derivative * dim_action)),
+//                            dim_action, dim_state_derivative);
+//
+//              mju_transpose(DataAt(model_derivative.DT, t * (dim_sensor * dim_action)),
+//                            DataAt(model_derivative.D, t * (dim_sensor * dim_action)),
+//                            dim_action, dim_sensor);
+//          }
+//
+//          mju_transpose(DataAt(model_derivative.CT, t * (dim_sensor * dim_state_derivative)),
+//                        DataAt(model_derivative.C, t * (dim_sensor * dim_state_derivative)),
+//                        dim_state_derivative, dim_sensor);
+//      }
+
       for(int t = 0; t < horizon; t++){
           if(t != horizon - 1){
-              mju_transpose(DataAt(model_derivative.AT, t * (dim_state_derivative * dim_state_derivative)),
-                            DataAt(model_derivative.A, t * (dim_state_derivative * dim_state_derivative)),
+              mju_transpose(DataAt(model_derivative.A, t * (dim_state_derivative * dim_state_derivative)),
+                            DataAt(model_derivative.AT, t * (dim_state_derivative * dim_state_derivative)),
                             dim_state_derivative, dim_state_derivative);
 
-              mju_transpose(DataAt(model_derivative.BT, t * (dim_state_derivative * dim_action)),
-                            DataAt(model_derivative.B, t * (dim_state_derivative * dim_action)),
+              mju_transpose(DataAt(model_derivative.B, t * (dim_state_derivative * dim_action)),
+                            DataAt(model_derivative.BT, t * (dim_state_derivative * dim_action)),
                             dim_action, dim_state_derivative);
 
-              mju_transpose(DataAt(model_derivative.DT, t * (dim_sensor * dim_action)),
-                            DataAt(model_derivative.D, t * (dim_sensor * dim_action)),
+              mju_transpose(DataAt(model_derivative.D, t * (dim_sensor * dim_action)),
+                            DataAt(model_derivative.DT, t * (dim_sensor * dim_action)),
                             dim_action, dim_sensor);
           }
 
-          mju_transpose(DataAt(model_derivative.CT, t * (dim_sensor * dim_state_derivative)),
-                        DataAt(model_derivative.C, t * (dim_sensor * dim_state_derivative)),
+          mju_transpose(DataAt(model_derivative.C, t * (dim_sensor * dim_state_derivative)),
+                        DataAt(model_derivative.CT, t * (dim_sensor * dim_state_derivative)),
                         dim_state_derivative, dim_sensor);
       }
 
       // Copy matrices back into A, B, C and D
-      mju_copy(model_derivative.A.data(), model_derivative.AT.data(), model_derivative.A.size());
-      mju_copy(model_derivative.B.data(), model_derivative.BT.data(), model_derivative.B.size());
-      mju_copy(model_derivative.C.data(), model_derivative.CT.data(), model_derivative.C.size());
-      mju_copy(model_derivative.D.data(), model_derivative.DT.data(), model_derivative.D.size());
+//      mju_copy(model_derivative.A.data(), model_derivative.AT.data(), model_derivative.A.size());
+//      mju_copy(model_derivative.B.data(), model_derivative.BT.data(), model_derivative.B.size());
+//      mju_copy(model_derivative.C.data(), model_derivative.CT.data(), model_derivative.C.size());
+//      mju_copy(model_derivative.D.data(), model_derivative.DT.data(), model_derivative.D.size());
 
         // end timer
         time_transpose = GetDuration(time_start);
