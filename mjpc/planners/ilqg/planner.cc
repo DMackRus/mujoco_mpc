@@ -258,16 +258,17 @@ void iLQGPlanner::GUI(mjUI& ui) {
   mjui_add(&ui, defiLQG);
 
   // TODO(DMackRus) - better choice for this, max degrees of freedom??
-  mjuiDef defKeypoints[kMaxCostTerms + 5];
+  mjuiDef defKeypoints[kMaxCostTerms + 6];
 
   defKeypoints[0] = {mjITEM_SEPARATOR, "Keypoints", 1};
-  defKeypoints[1] = {mjITEM_SELECT, "Keypoint method", 2, &active_keypoint_method,
+  defKeypoints[1] = {mjITEM_CHECKINT, "keypoints", 2, &use_keypoints, ""};
+  defKeypoints[2] = {mjITEM_SELECT, "Keypoint method", 2, &active_keypoint_method,
                     "Set Interval\nAdaptive Jerk\nVelocity Change"},
-  defKeypoints[2] = {mjITEM_SLIDERINT, "min. interval", 2, &min_n, "1 16"};
-  defKeypoints[3] = {mjITEM_SLIDERINT, "max. interval", 2, &max_n, "1 16"};
+  defKeypoints[3] = {mjITEM_SLIDERINT, "min. interval", 2, &min_n, "1 16"};
+  defKeypoints[4] = {mjITEM_SLIDERINT, "max. interval", 2, &max_n, "1 16"};
 
   for(int i = 0; i < model->nv; i++){
-    defKeypoints[4 + i] = {mjITEM_SLIDERNUM, "Jerk threshold",
+    defKeypoints[5 + i] = {mjITEM_SLIDERNUM, "Jerk threshold",
                          1, DataAt(jerk_thresholds, i), "0 1"};
 
     // Set names of sliders for jerk thresholds
@@ -283,7 +284,7 @@ void iLQGPlanner::GUI(mjUI& ui) {
     // Concatenate the second string to the result buffer
     strcat(result, model->names + model->name_jntadr[i]);
 
-    mju::strcpy_arr(defKeypoints[4 + i].name,
+    mju::strcpy_arr(defKeypoints[5 + i].name,
                       result);
 
     // limits
@@ -292,7 +293,7 @@ void iLQGPlanner::GUI(mjUI& ui) {
 
   }
 
-  defKeypoints[5 + model->nv] = {mjITEM_END};
+  defKeypoints[6 + model->nv] = {mjITEM_END};
 
   mjui_add(&ui, defKeypoints);
 
@@ -430,7 +431,8 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
   // TODO - make this a variable from GUI
   // compute model and sensor Jacobians
-  if(1){
+  if(use_keypoints){
+//      std::cout << "using keypoints \n";
       // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
 
