@@ -57,7 +57,7 @@ set(MUJOCO_TEST_PYTHON_UTIL OFF)
 
 set(MUJOCO_MPC_MUJOCO_GIT_TAG
     #893c4042302e5a5738dbc462466e746f2bbc1ea5 old commit from mjpc
-    e9da1dde63cfecd5c356e6bf31844798994d6d50
+    eebd95bc0acff44d543af39cf037ec37e93c6bbc
     CACHE STRING "Git revision for MuJoCo."
 )
 

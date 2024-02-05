@@ -94,105 +94,12 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
                        int dim_state_derivative, int dim_action, int dim_sensor, int T,
                        double tol, int mode, ThreadPool& pool, std::vector<std::vector<int>> keypoints){
 
-        for (int t = 0; t < T; t++) {
-
-        // If no keypoints for this dof, skip computation
-//        if(keypoints[t].size() == 0){
-//            continue;
-//        }
-
-            mjData *d = data[ThreadPool::WorkerId()].get();
-            // set state
-            SetState(m, d, x + t * dim_state);
-            d->time = h[t];
-
-            // set action
-            mju_copy(d->ctrl, u + t * dim_action, dim_action);
-
-            // Columns at current time index to compute derivatives for
-            int *columns = new int[keypoints[t].size()];
-            int num_columns = keypoints[t].size();
-            for(int i = 0; i < num_columns; i++){
-                columns[i] = keypoints[t][i];
-            }
-
-            if(t == 0){
-                std::cout << "Keypoints at time " << t << ": ";
-                std::cout << "size: " << num_columns << " \n";
-                for(int i = 0; i < num_columns; i++){
-                    std::cout << columns[i] << " ";
-                }
-                std::cout << std::endl;
-            }
-
-            if(t == 1){
-                std::cout << "Keypoints at time " << t << ": ";
-                for(int i = 0; i < num_columns; i++){
-                    std::cout << columns[i] << " ";
-                }
-                std::cout << std::endl;
-            }
-
-            // Jacobians
-            if (t == T - 1) {
-                // Jacobians
-                mjd_transitionFD_columns(m, d, tol, mode, nullptr, nullptr,
-                                         DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                                         nullptr, columns, num_columns);
-            } else {
-                // derivatives
-                mjd_transitionFD_columns(m, d, tol, mode,
-                                            DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-                                            DataAt(B, t * (dim_state_derivative * dim_action)),
-                                            DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                                            DataAt(D, t * (dim_sensor * dim_action)),
-                                            columns, num_columns);
-
-            }
-
-            delete[] columns;
-    }
-
-    // Transpose all the matrices
-    for(int t = 0; t < T; t++){
-
-        mju_transpose(DataAt(AT, t * (dim_state_derivative * dim_state_derivative)),
-                      DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
-                      dim_state_derivative, dim_state_derivative);
-
-        mju_transpose(DataAt(BT, t * (dim_state_derivative * dim_action)),
-                        DataAt(B, t * (dim_state_derivative * dim_action)),
-                      dim_state_derivative, dim_action);
-
-        mju_transpose(DataAt(CT, t * (dim_sensor * dim_state_derivative)),
-                        DataAt(C, t * (dim_sensor * dim_state_derivative)),
-                        dim_sensor, dim_state_derivative);
-
-        mju_transpose(DataAt(DT, t * (dim_sensor * dim_action)),
-                        DataAt(D, t * (dim_sensor * dim_action)),
-                        dim_sensor, dim_action);
-
-//        if (A) mju_transpose(A, AT, ndx, ndx);
-//        if (B) mju_transpose(B, BT, nu, ndx);
-//        if (C) mju_transpose(C, CT, ndx, ns);
-//        if (D) mju_transpose(D, DT, nu, ns);
-    }
-
-
-
-//    int count_before = pool.GetCount();
-//    int threads_for_keypoints = 0;
-//    for (int t = 0; t < T; t++) {
+//        for (int t = 0; t < T; t++) {
 //
-//        // If no keypoints for this dof, skip computation
-////        if(keypoints[t].size() == 0){
-////            continue;
-////        }
-//        threads_for_keypoints++;
-//
-//        pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
-//                              dim_state, dim_state_derivative, dim_action, dim_sensor,
-//                              tol, mode, t, T, keypoints]() {
+//            // If no keypoints for this dof, skip computation
+//            if(keypoints[t].size() == 0){
+//                continue;
+//            }
 //
 //            mjData *d = data[ThreadPool::WorkerId()].get();
 //            // set state
@@ -207,23 +114,6 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
 //            int num_columns = keypoints[t].size();
 //            for(int i = 0; i < num_columns; i++){
 //                columns[i] = keypoints[t][i];
-//            }
-//
-//            if(t == 0){
-//                std::cout << "Keypoints at time " << t << ": ";
-//                std::cout << "size: " << num_columns << " \n";
-//                for(int i = 0; i < num_columns; i++){
-//                    std::cout << columns[i] << " ";
-//                }
-//                std::cout << std::endl;
-//            }
-//
-//            if(t == 1){
-//                std::cout << "Keypoints at time " << t << ": ";
-//                for(int i = 0; i < num_columns; i++){
-//                    std::cout << columns[i] << " ";
-//                }
-//                std::cout << std::endl;
 //            }
 //
 //            // Jacobians
@@ -244,11 +134,60 @@ void ModelDerivatives::ComputeKeypoints(const mjModel* m, const std::vector<Uniq
 //            }
 //
 //            delete[] columns;
-//        });
 //    }
-//
-//    pool.WaitCount(count_before + threads_for_keypoints);
-//    pool.ResetCount();
+
+    int count_before = pool.GetCount();
+    int threads_for_keypoints = 0;
+    for (int t = 0; t < T; t++) {
+
+        // If no keypoints for this dof, skip computation
+        if(keypoints[t].size() == 0){
+            continue;
+        }
+        threads_for_keypoints++;
+
+        pool.Schedule([&m, &data, &A = A, &B = B, &C = C, &D = D, &x, &u, &h,
+                              dim_state, dim_state_derivative, dim_action, dim_sensor,
+                              tol, mode, t, T, keypoints]() {
+
+            mjData *d = data[ThreadPool::WorkerId()].get();
+            // set state
+            SetState(m, d, x + t * dim_state);
+            d->time = h[t];
+
+            // set action
+            mju_copy(d->ctrl, u + t * dim_action, dim_action);
+
+            // Columns at current time index to compute derivatives for
+            int *columns = new int[keypoints[t].size()];
+            int num_columns = keypoints[t].size();
+            for(int i = 0; i < num_columns; i++){
+                columns[i] = keypoints[t][i];
+            }
+
+            // Jacobians
+            if (t == T - 1) {
+                // Jacobians
+                mjd_transitionFD_columns(m, d, tol, mode, nullptr, nullptr,
+                                         DataAt(C, t * (dim_sensor * dim_state_derivative)),
+                                         nullptr, columns, num_columns);
+            } else {
+                // derivatives
+                mjd_transitionFD_columns(m, d, tol, mode,
+                                            DataAt(A, t * (dim_state_derivative * dim_state_derivative)),
+                                            DataAt(B, t * (dim_state_derivative * dim_action)),
+                                            DataAt(C, t * (dim_sensor * dim_state_derivative)),
+                                            DataAt(D, t * (dim_sensor * dim_action)),
+                                            columns, num_columns);
+
+            }
+
+            delete[] columns;
+        });
+    }
+
+    pool.WaitCount(count_before + threads_for_keypoints);
+    pool.ResetCount();
 }
 
 }  // namespace mjpc

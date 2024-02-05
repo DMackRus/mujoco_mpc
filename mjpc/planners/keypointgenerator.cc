@@ -117,13 +117,13 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
 
 
 //     Print out the key points
-    for(int i = 0; i < keypoints.size(); i++){
-        std::cout << "timestep " << i << ": ";
-        for(int j = 0; j < keypoints[i].size(); j++){
-            std::cout << keypoints[i][j] << " ";
-        }
-        std::cout << "\n";
-    }
+//    for(int i = 0; i < keypoints.size(); i++){
+//        std::cout << "timestep " << i << ": ";
+//        for(int j = 0; j < keypoints[i].size(); j++){
+//            std::cout << keypoints[i][j] << " ";
+//        }
+//        std::cout << "\n";
+//    }
 
     return keypoints;
 }
@@ -188,19 +188,6 @@ void KeypointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                                                std::vector<double> &D,
                                                int dim_state, int dim_action, int dim_sensor, int T){
 
-    // Check columns have been computed by printing
-//    for(int t = 0; t < 2; t++){
-//        // print whole A matrix
-//        std::cout << "---------------- t = " << t << " ----------------\n";
-//        for(int j = 0; j < dim_state; j++){
-//            for(int i = 0; i < dim_state; i++){
-//                std::cout << A[(t * dim_state) + (i * dim_state) + j] << " ";
-//
-//            }
-//            std::cout << "\n";
-//        }
-//
-//    }
 
     // Offset variables in time dimension for A, B, C, D matrices
     int nA = dim_state * dim_state;
@@ -250,11 +237,6 @@ void KeypointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
                 double *A_pU = DataAt(A, (t * nA) + (col * dim_state));
                 double *A_vU = DataAt(A, (t * nA) + (col * dim_state) + (dim_state * dof));
 
-                // check A_pL and A_vL are not empty
-//                std::cout << "A_pL: " << A_pL[0] << " A_vL: " << A_vL[0] << "\n";
-//                std::cout << "A_pi: " << A_pi[0] << " A_vi: " << A_vi[0] << "\n";
-//                std::cout << "A_pU: " << A_pU[0] << " A_vU: " << A_vU[0] << "\n";
-
                 // Perform the interpolation
                 mju_scl(A_pi, A_pL, 1.0 - tt, dim_state);
                 mju_addToScl(A_pi, A_pU, tt, dim_state);
@@ -275,9 +257,6 @@ void KeypointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
 
                         // Position and velocity column that we are interpolating to
                         double *B_U = DataAt(B, (t * nB) + (col * dim_state));
-
-//                        std::cout << "B_L: " << B_L[0] << " B_U: " << B_U[0] << "\n";
-//                        std::cout << "B_i: " << B_i[0] << "\n";
 
                         // Perform the interpolation
                         mju_scl(B_i, B_L, 1.0 - tt, dim_state);
@@ -318,9 +297,6 @@ void KeypointGenerator::InterpolateDerivatives(std::vector<std::vector<int>> key
 
                     // Position and velocity column that we are interpolating to
                     double *D_U = DataAt(D, (t * nD) + (col * dim_sensor));
-
-//                    std::cout << "D_L: " << D_L[0] << " D_U: " << D_U[0] << "\n";
-//                    std::cout << "D_i: " << D_i[0] << "\n";
 
                     // Perform the interpolation
                     mju_scl(D_i, D_L, 1.0 - tt, dim_sensor);
