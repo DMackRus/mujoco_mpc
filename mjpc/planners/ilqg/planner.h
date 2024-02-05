@@ -143,6 +143,7 @@ class iLQGPlanner : public Planner {
   int min_n = 1;
   int max_n = 1;
   std::vector<double> jerk_thresholds;
+  std::vector<double> velocity_change_thresholds;
 
   // values
   double action_step;
@@ -165,6 +166,11 @@ class iLQGPlanner : public Planner {
  private:
   int num_trajectory_ = 1;
   int num_rollouts_gui_ = 1;
+
+  //TODO(DMackRus) remove this after testing
+  int print_counter = 0;
+  double time_transpose = 0.0f;
+  double time_fd = 0.0f;
 };
 
 }  // namespace mjpc

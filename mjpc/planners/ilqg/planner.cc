@@ -71,8 +71,10 @@ void iLQGPlanner::Allocate() {
   mocap.resize(7 * model->nmocap);
   userdata.resize(model->nuserdata);
 
-  // Keypoint objects
+  // Keypoint thresholds
   jerk_thresholds.resize(model->nv);
+  velocity_change_thresholds.resize(model->nv);
+
 
   // candidate trajectories
   for (int i = 0; i < kMaxTrajectory; i++) {
@@ -412,7 +414,6 @@ void iLQGPlanner::Plots(mjvFigure* fig_planner, mjvFigure* fig_timer,
 
 // single iLQG iteration
 void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
-    auto iter_start = std::chrono::steady_clock::now();
   // set previous best cost
   double previous_return = candidate_policy[0].trajectory.total_return;
 
@@ -429,21 +430,15 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   // start timer
   auto model_derivative_start = std::chrono::steady_clock::now();
 
-  // TODO - make this a variable from GUI
-  // compute model and sensor Jacobians
   if(use_keypoints){
-//      std::cout << "using keypoints \n";
-      // Define a keypoint method, hardcoded for now.
       keypoint_method active_method;
 
       active_method.min_N = min_n;
       active_method.max_N = max_n;
 
-      if(active_keypoint_method == SET_INTERVAL){
-          active_method.name = "set_interval";
-      }
-      else if(active_keypoint_method == ADAPTIVE_JERK){
-          active_method.name = "adaptive_jerk";
+      active_method.method = active_keypoint_method;
+
+      if(active_keypoint_method == ADAPTIVE_JERK){
 
           // Set jerk thresholds from GUI
           for(int i = 0; i < model->nv; i++){
@@ -452,12 +447,11 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
 
       }
       else if(active_keypoint_method == VELOCITY_CHANGE){
-          active_method.name = "velocity_change";
-      }
-      else{
-          std::cout << "Invalid keypoint method selected. Defaulting to baseline\n";
-          active_method.name = "set_interval";
-          active_method.min_N = 1;
+          // Set velocity change thresholds from GUI
+          for(int i = 0; i < model->nv; i++){
+              // TODO: Add velocity change thresholds to GUI
+              active_method.velocity_change_thresholds.push_back(jerk_thresholds[i]);
+          }
       }
 
       // Generate keypoints
@@ -467,6 +461,8 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
                                                                                       dim_state);
 
       // Compute derivatives
+      // time this
+      auto time_fd_start = std::chrono::steady_clock::now();
       model_derivative.ComputeKeypoints(
               model, data_, candidate_policy[0].trajectory.states.data(),
               candidate_policy[0].trajectory.actions.data(),
@@ -474,13 +470,25 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
               dim_state_derivative, dim_action, dim_sensor, horizon,
               settings.fd_tolerance, settings.fd_mode, pool, keypoints);
 
+        // end timer
+        time_fd = GetDuration(time_fd_start);
+
       // Interpolate derivatives
+      // time this
+        auto time_start_inter = std::chrono::steady_clock::now();
       key_point_generator.InterpolateDerivatives(keypoints,
                                                  model_derivative.A,
                                                  model_derivative.B,
                                                  model_derivative.C,
                                                  model_derivative.D,
                                                  dim_state, dim_action, dim_sensor, horizon);
+
+        // end timer
+        key_point_generator.time_interpolate = GetDuration(time_start_inter);
+
+
+      //time this
+      auto time_start = std::chrono::steady_clock::now();
 
       for(int t = 0; t < horizon; t++){
           if(t != horizon - 1){
@@ -508,8 +516,12 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
       mju_copy(model_derivative.C.data(), model_derivative.CT.data(), model_derivative.C.size());
       mju_copy(model_derivative.D.data(), model_derivative.DT.data(), model_derivative.D.size());
 
+        // end timer
+        time_transpose = GetDuration(time_start);
+
   }
   else{
+      // Compute dynamics derivatives
       model_derivative.Compute(
               model, data_, candidate_policy[0].trajectory.states.data(),
               candidate_policy[0].trajectory.actions.data(),
@@ -725,14 +737,24 @@ void iLQGPlanner::Iteration(int horizon, ThreadPool& pool) {
   // stop timer
   double policy_update_time = GetDuration(policy_update_start);
 
-    double iter_time = GetDuration(iter_start);
-    std::cout << "time iter: " << iter_time << "\n";
+    print_counter++;
+    if(print_counter == 20){
+        print_counter = 0;
 
-    std::cout << "time model derivs: " << model_derivative_time << "\n";
-    std::cout << "time cost derivs: " << cost_derivative_time << "\n";
-    std::cout << "time rollouts: " << rollouts_time << "\n";
-    std::cout << "time backward pass: " << backward_pass_time << "\n";
-    std::cout << "time policy update: " << policy_update_time << "\n";
+        std::cout << "percent derivs: " << key_point_generator.percent_of_derivs << "\n";
+        std::cout << "time fd: " << time_fd << "\n";
+        std::cout << "time model derivs: " << model_derivative_time << "\n";
+        std::cout << "time transpose: " << time_transpose << "\n";
+        std::cout << "time itnerpolate: " << key_point_generator.time_interpolate << "\n";
+
+    }
+
+
+
+//    std::cout << "time cost derivs: " << cost_derivative_time << "\n";
+//    std::cout << "time rollouts: " << rollouts_time << "\n";
+//    std::cout << "time backward pass: " << backward_pass_time << "\n";
+//    std::cout << "time policy update: " << policy_update_time << "\n";
 
   // set timers
   model_derivative_compute_time = model_derivative_time;

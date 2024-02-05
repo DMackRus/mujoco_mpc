@@ -51,7 +51,7 @@ enum keypoint_method_names{
 };
 
 struct keypoint_method{
-    std::string name;
+    int method;
     int min_N;
     int max_N;
     std::vector<double> jerk_thresholds;
@@ -108,11 +108,18 @@ public:
                                 std::vector<double> &D,
                                 int dim_state, int dim_action, int dim_sensor, int T);
 
+    double percent_of_derivs = 0.0f;
+    double time_interpolate = 0.0f;
+
 private:
 
     std::vector<std::vector<int>> GenerateKeypoints_AdaptiveJerk(keypoint_method keypoint_method,
                                                                  int T, int dim_state,
-                                                                 double* jerk_profile);
+                                                                 const double* jerk_profile);
+
+    std::vector<std::vector<int>> GenerateKeypoints_VelocityChange(keypoint_method keypoint_method,
+                                                                   int T, int dim_state,
+                                                                   const double* x);
 
     double* GenerateJerkProfile(int T, const double* x, int dim_state);
 

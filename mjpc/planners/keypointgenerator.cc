@@ -51,7 +51,7 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
         return keypoints;
     }
 
-    if(keypoint_method.name == "set_interval"){
+    if(keypoint_method.method == SET_INTERVAL){
         for(int i = 1; i < T; i++){
 
             if(i % keypoint_method.min_N == 0){
@@ -67,17 +67,15 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
             }
         }
     }
-    else if(keypoint_method.name == "adaptive_jerk"){
-        double *jerk_profile = GenerateJerkProfile(T, x, dim_state);
-        // print the jerk profile
-//        for(int i = 0; i < T - 2; i++){
-//            for(int j = 0; j < dof; j++){
-//                std::cout << jerk_profile[(i * dof) + j] << " ";
-//            }
-//            std::cout << "\n";
-//        }
+    else if(keypoint_method.method == ADAPTIVE_JERK){
+        const double *jerk_profile = GenerateJerkProfile(T, x, dim_state);
+
         keypoints = GenerateKeypoints_AdaptiveJerk(keypoint_method, T, dim_state, jerk_profile);
     }
+    else if(keypoint_method.method == VELOCITY_CHANGE){
+        keypoints = GenerateKeypoints_VelocityChange(keypoint_method, T, dim_state, x);
+    }
+
 //    else if(keypoint_method.name == "iterative_error"){
 //        computed_keypoints.clear();
 //        physics_simulator->initModelForFiniteDifferencing();
@@ -85,10 +83,7 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
 //        physics_simulator->resetModelAfterFiniteDifferencing();
 //
 //    }
-//    else if(keypoint_method.name == "Velocity_Change"){
-//        std::vector<MatrixXd> velocity_profile = GenerateVelocityProfile(horizon, trajectory_states);
-//        keypoints = GenerateKeyPointsVelocityChange(horizon, velocity_profile, keypoint_method);
-//    }
+
     else{
         std::cout << "ERROR: keyPointsMethod not recognised \n";
     }
@@ -97,24 +92,13 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
     keypoints[T - 2] = keypoints[0];
     keypoints[T - 1] = keypoints[0];
 
+    // temporary compute percentage of derivs computed.
+    int total_derivs = 0;
+    for(int i = 0; i < T; i++){
+        total_derivs += keypoints[i].size();
+    }
 
-    // TEMPORARY TEST
-//    for(int t = 0; t < T; t++){
-//        keypoints[t].clear();
-//    }
-
-    // Sample all dofs at every interval, but dof 0 every other one
-//    for(int t = 0; t < T; t++){
-//        for(int i = 0; i < dof; i++){
-//            if(t % 2 == 1){
-//
-//            }
-//            else{
-//                keypoints[t].push_back(i);
-//            }
-//        }
-//    }
-
+    percent_of_derivs = (double(total_derivs) / (double(T) * double(dof))) * 100;
 
 //     Print out the key points
 //    for(int i = 0; i < keypoints.size(); i++){
@@ -131,18 +115,11 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeyPoints(keypoint_meth
 //TODO(DMackRus) - Make this line shorter?
 std::vector<std::vector<int>> KeypointGenerator::GenerateKeypoints_AdaptiveJerk(keypoint_method keypoint_method,
                                                                  int T, int dim_state,
-                                                                 double* jerk_profile){
+                                                                 const double* jerk_profile){
     std::vector<std::vector<int>> keypoints;
 
     // TODO(DMackRus) - this could be wrong sometimes, if qpos != qvel
     int dof = dim_state / 2;
-
-//    for(int i = 0; i < T - 2; i++){
-//        for(int j = 0; j < dof; j++){
-//            std::cout << jerk_profile[(i * dof) + j] << " ";
-//        }
-//        std::cout << "\n";
-//    }
 
     for(int t = 0; t < T; t++){
         keypoints.push_back(std::vector<int>());
@@ -174,6 +151,79 @@ std::vector<std::vector<int>> KeypointGenerator::GenerateKeypoints_AdaptiveJerk(
             if((t - last_indices[j]) >= keypoint_method.max_N){
                 keypoints[t].push_back(j);
                 last_indices[j] = t;
+            }
+        }
+    }
+
+    return keypoints;
+}
+
+std::vector<std::vector<int>> KeypointGenerator::GenerateKeypoints_VelocityChange(keypoint_method keypoint_method,
+                                                               int T, int dim_state,
+                                                               const double* x){
+    std::vector<std::vector<int>> keypoints;
+
+    // TODO(DMackRus) - this could be wrong sometimes, if qpos != qvel
+    int dof = dim_state / 2;
+
+    for(int t = 0; t < T; t++){
+        keypoints.push_back(std::vector<int>());
+    }
+
+    // Enforce all dofs in keypoint list at t = 0
+    for(int i = 0; i < dof; i++){
+        keypoints[0].push_back(i);
+    }
+
+    // Keeps track of interval from last keypoint for this dof
+    std::vector<int> last_keypoint_counter = std::vector<int>(dof, 0);
+    std::vector<double> last_vel_value = std::vector<double>(dof, 0);
+    std::vector<double> last_vel_direction = std::vector<double>(dof, 0);
+
+    for(int i = 0; i < dof; i++){
+        last_vel_value[i] = x[i + dof];
+    }
+
+    // Loop over the dofs
+    for(int i = 0; i < dof; i++){
+        // Loop over the horizon - skip 0, T-1 and T-2.
+        for(int t = 1; t < T - 2; t++){
+
+            last_keypoint_counter[i]++;
+            // t at i
+            double current_vel_direction = x[t * dim_state + dof + i] - x[(t - 1) * dim_state + dof + i];
+            double current_vel_change_since_last_keypoint = x[t * dim_state + dof + i] - last_vel_value[i];
+
+            // If the vel change is above the required threshold
+            if(last_keypoint_counter[i] >= keypoint_method.min_N){
+                if(abs(current_vel_change_since_last_keypoint) > keypoint_method.velocity_change_thresholds[i]){
+                    keypoints[t].push_back(i);
+                    last_vel_value[i] = x[t * dim_state + dof + i];
+                    last_keypoint_counter[i] = 0;
+                    continue;
+                }
+            }
+
+            // If the interval is greater than min_N
+            if(last_keypoint_counter[i] >= keypoint_method.min_N){
+                // If the direction of the velocity has changed
+                if(current_vel_direction * last_vel_direction[i] < 0){
+                    keypoints[t].push_back(i);
+                    last_vel_value[i] = x[t * dim_state + dof + i];
+                    last_keypoint_counter[i] = 0;
+                    continue;
+                }
+            }
+            else{
+                last_vel_direction[i] = current_vel_direction;
+            }
+
+            // If interval is greater than max_N
+            if(last_keypoint_counter[i] >= keypoint_method.max_N){
+                keypoints[t].push_back(i);
+                last_vel_value[i] = x[t * dim_state + dof + i];
+                last_keypoint_counter[i] = 0;
+                continue;
             }
         }
     }

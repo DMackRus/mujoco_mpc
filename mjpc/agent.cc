@@ -280,8 +280,6 @@ void Agent::PlanIteration(ThreadPool* pool) {
               std::chrono::steady_clock::now() - agent_start)
               .count();
 
-    std::cout << "agent compute time: " << agent_compute_time_ << "\n";
-
       // counter
       count_ += 1;
     } else {
